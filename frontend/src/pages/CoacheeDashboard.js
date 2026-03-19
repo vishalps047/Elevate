@@ -6,12 +6,12 @@ import { Card, CardContent } from '../components/ui/card';
 import { Badge } from '../components/ui/badge';
 import {
   TrendingUp, Users, Calendar, Target, Star, Clock, ChevronRight,
-  Bell, ArrowRight, BookOpen, Award, BarChart2, CheckCircle, AlertCircle
+  Bell, ArrowRight, BookOpen, CheckCircle, AlertCircle
 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '../components/ui/avatar';
 import { Progress } from '../components/ui/progress';
-import { mockSessions, mockNotifications } from '../data/mockData';
-import { SessionCard, FeedbackModal, ScheduleModal } from '../components/SessionComponents';
+import { mockSessions } from '../data/mockData';
+import { SessionCard, FeedbackModal, ScheduleModal, RescheduleModal } from '../components/SessionComponents';
 import { toast } from 'sonner';
 
 function StatCard({ icon: Icon, value, label, sub, color = 'primary' }) {
@@ -40,11 +40,13 @@ function StatCard({ icon: Icon, value, label, sub, color = 'primary' }) {
 }
 
 export default function CoacheeDashboard() {
-  const { currentUser } = useApp();
+  const { currentUser, addNotificationToRole } = useApp();
   const navigate = useNavigate();
   const [sessions, setSessions] = useState(mockSessions);
   const [feedbackModal, setFeedbackModal] = useState({ open: false, session: null });
   const [scheduleModal, setScheduleModal] = useState({ open: false });
+  // Reschedule modal state — stores the session being rescheduled
+  const [rescheduleModal, setRescheduleModal] = useState({ open: false, session: null });
 
   const upcomingSessions = sessions.filter(s => s.status === 'upcoming');
   const completedSessions = sessions.filter(s => s.status === 'completed');
@@ -55,6 +57,13 @@ export default function CoacheeDashboard() {
       s.id === feedbackModal.session?.id
         ? { ...s, feedbackSubmitted: true, rating, feedbackComment: comment }
         : s
+    ));
+  };
+
+  // Called when a session is successfully rescheduled
+  const handleRescheduleConfirm = (slot, session) => {
+    setSessions(prev => prev.map(s =>
+      s.id === session.id ? { ...s, date: slot.date, time: slot.time } : s
     ));
   };
 
@@ -189,7 +198,7 @@ export default function CoacheeDashboard() {
                     session={s}
                     role="coachee"
                     onFeedback={(s) => setFeedbackModal({ open: true, session: s })}
-                    onReschedule={() => setScheduleModal({ open: true })}
+                    onReschedule={(s) => setRescheduleModal({ open: true, session: s })}
                   />
                 )) : (
                   <div className="text-center py-8">
@@ -227,6 +236,7 @@ export default function CoacheeDashboard() {
         </div>
       </div>
 
+      {/* Modals */}
       <FeedbackModal
         open={feedbackModal.open}
         onClose={() => setFeedbackModal({ open: false, session: null })}
@@ -238,7 +248,18 @@ export default function CoacheeDashboard() {
         onClose={() => setScheduleModal({ open: false })}
         coachName="Fatema Hunaid"
         coachAvatar="https://randomuser.me/api/portraits/women/44.jpg"
-        onConfirm={(slot) => toast.success(`Session booked for ${slot.date} at ${slot.time}`)}
+        onConfirm={(slot) => {
+          toast.success(`Session booked for ${slot.date} at ${slot.time}`);
+        }}
+      />
+      {/* Reschedule: coachee rescheduling → notifies coach + admin */}
+      <RescheduleModal
+        open={rescheduleModal.open}
+        onClose={() => setRescheduleModal({ open: false, session: null })}
+        session={rescheduleModal.session}
+        initiatorRole="coachee"
+        onConfirm={handleRescheduleConfirm}
+        addNotificationToRole={addNotificationToRole}
       />
     </div>
   );

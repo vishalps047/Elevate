@@ -1,7 +1,6 @@
 import { useState } from 'react';
-import { Calendar, Clock, Video, ChevronRight, CheckCircle, Edit2, X, AlertCircle } from 'lucide-react';
+import { Calendar, Clock, Video, ChevronRight, CheckCircle, Edit2, X, AlertCircle, RefreshCw } from 'lucide-react';
 import { Button } from '../components/ui/button';
-import { Badge } from '../components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '../components/ui/avatar';
 import { Card, CardContent } from '../components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../components/ui/dialog';
@@ -14,6 +13,7 @@ const statusConfig = {
   cancelled: { label: 'Cancelled', className: 'status-declined', icon: X },
 };
 
+// ─── SessionCard ────────────────────────────────────────────────────────────
 export function SessionCard({ session, role = 'coachee', onFeedback, onReschedule }) {
   const config = statusConfig[session.status] || statusConfig.upcoming;
   const Icon = config.icon;
@@ -60,13 +60,13 @@ export function SessionCard({ session, role = 'coachee', onFeedback, onReschedul
           </div>
         </div>
 
-        {/* Actions */}
+        {/* Upcoming actions */}
         {session.status === 'upcoming' && (
           <div className="flex items-center gap-2 mt-3 pt-3 border-t border-border">
             <Button
               size="sm"
               className="bg-accent hover:bg-accent/90 text-white h-8 text-xs px-3"
-              onClick={() => window.open(session.meetingLink, '_blank')}
+              onClick={() => window.open(session.meetingLink || '#', '_blank')}
             >
               <Video className="w-3.5 h-3.5 mr-1.5" /> Join Session
             </Button>
@@ -81,6 +81,7 @@ export function SessionCard({ session, role = 'coachee', onFeedback, onReschedul
           </div>
         )}
 
+        {/* Completed — pending feedback */}
         {session.status === 'completed' && !session.feedbackSubmitted && role === 'coachee' && (
           <div className="mt-3 pt-3 border-t border-border">
             <div className="flex items-center gap-2 text-warning bg-yellow-50 rounded-lg p-2.5 mb-2">
@@ -97,6 +98,7 @@ export function SessionCard({ session, role = 'coachee', onFeedback, onReschedul
           </div>
         )}
 
+        {/* Completed — feedback done */}
         {session.status === 'completed' && session.feedbackSubmitted && (
           <div className="flex items-center gap-1.5 mt-2 pt-2 border-t border-border">
             <CheckCircle className="w-3.5 h-3.5 text-success" />
@@ -108,6 +110,171 @@ export function SessionCard({ session, role = 'coachee', onFeedback, onReschedul
   );
 }
 
+// ─── RescheduleModal ─────────────────────────────────────────────────────────
+// Props:
+//   open, onClose, session
+//   initiatorRole : 'coachee' | 'coach'   (who is rescheduling)
+//   onConfirm(slot, session)              (update the session in parent state)
+//   addNotificationToRole(role, notif)    (from AppContext — to fire cross-role notifs)
+export function RescheduleModal({ open, onClose, session, initiatorRole = 'coachee', onConfirm, addNotificationToRole }) {
+  const [selectedDate, setSelectedDate] = useState(null);
+  const [selectedTime, setSelectedTime] = useState(null);
+  const [saving, setSaving] = useState(false);
+
+  const reset = () => {
+    setSelectedDate(null);
+    setSelectedTime(null);
+    setSaving(false);
+  };
+
+  const handleConfirm = () => {
+    if (!selectedDate || !selectedTime) {
+      toast.error('Please select a date and time slot');
+      return;
+    }
+    setSaving(true);
+    setTimeout(() => {
+      // Update session in parent
+      onConfirm({ date: selectedDate, time: selectedTime }, session);
+
+      // ── Fire cross-role notifications ────────────────────────────────
+      const topic = session?.topic || 'Coaching Session';
+      const sessionNum = session?.sessionNumber || '';
+
+      if (initiatorRole === 'coachee') {
+        // Coachee rescheduled → notify Coach + Admin
+        addNotificationToRole('coach', {
+          type: 'reschedule',
+          title: 'Session Rescheduled by Coachee',
+          message: `Sarah Johnson has rescheduled Session ${sessionNum} (${topic}) to ${selectedDate} at ${selectedTime}.`,
+          avatar: 'https://randomuser.me/api/portraits/women/10.jpg',
+        });
+        addNotificationToRole('admin', {
+          type: 'reschedule',
+          title: 'Session Rescheduled',
+          message: `Sarah Johnson rescheduled Session ${sessionNum} with Fatema Hunaid to ${selectedDate} at ${selectedTime}.`,
+          avatar: 'https://randomuser.me/api/portraits/women/10.jpg',
+        });
+        toast.success('Session rescheduled!', {
+          description: `New slot: ${selectedDate} at ${selectedTime}. Coach has been notified.`,
+        });
+      } else {
+        // Coach rescheduled → notify Coachee + Admin
+        addNotificationToRole('coachee', {
+          type: 'reschedule',
+          title: 'Session Rescheduled by Your Coach',
+          message: `Fatema Hunaid has rescheduled your Session ${sessionNum} (${topic}) to ${selectedDate} at ${selectedTime}.`,
+          avatar: 'https://randomuser.me/api/portraits/women/44.jpg',
+        });
+        addNotificationToRole('admin', {
+          type: 'reschedule',
+          title: 'Session Rescheduled',
+          message: `Fatema Hunaid rescheduled Session ${sessionNum} with Sarah Johnson to ${selectedDate} at ${selectedTime}.`,
+          avatar: 'https://randomuser.me/api/portraits/women/44.jpg',
+        });
+        toast.success('Session rescheduled!', {
+          description: `New slot: ${selectedDate} at ${selectedTime}. Coachee & Admin have been notified.`,
+        });
+      }
+
+      reset();
+      onClose();
+    }, 900);
+  };
+
+  const handleClose = () => { reset(); onClose(); };
+
+  const displayName = initiatorRole === 'coachee' ? session?.coachName : session?.coacheeName;
+  const displayAvatar = initiatorRole === 'coachee' ? session?.coachAvatar : session?.coacheeAvatar;
+
+  return (
+    <Dialog open={open} onOpenChange={handleClose}>
+      <DialogContent className="max-w-lg">
+        <DialogHeader>
+          <DialogTitle className="font-heading flex items-center gap-2">
+            <RefreshCw className="w-5 h-5 text-primary" /> Reschedule Session
+          </DialogTitle>
+        </DialogHeader>
+
+        {/* Session info */}
+        {session && (
+          <div className="flex items-center gap-3 p-3 bg-primary-subtle rounded-xl mb-1">
+            <Avatar className="w-10 h-10">
+              <AvatarImage src={displayAvatar} />
+              <AvatarFallback>{displayName?.split(' ').map(n => n[0]).join('')}</AvatarFallback>
+            </Avatar>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold text-foreground truncate">{session.topic}</p>
+              <p className="text-xs text-muted-foreground">with {displayName} · Currently: {session.date} at {session.time}</p>
+            </div>
+          </div>
+        )}
+
+        {/* Who gets notified */}
+        <div className="flex items-start gap-2 bg-accent-subtle border border-accent/20 rounded-xl px-3 py-2.5 mb-2">
+          <AlertCircle className="w-4 h-4 text-accent flex-shrink-0 mt-0.5" />
+          <p className="text-xs text-foreground/80">
+            {initiatorRole === 'coachee'
+              ? 'Your coach (Fatema Hunaid) and the Admin will be notified of this reschedule.'
+              : 'The coachee (Sarah Johnson) and the Admin will be notified of this reschedule.'}
+          </p>
+        </div>
+
+        <p className="text-sm font-semibold text-foreground mb-3">Pick a New Slot</p>
+        <div className="space-y-3 max-h-[300px] overflow-y-auto scrollbar-thin pr-1">
+          {availabilitySlots.map((daySlot) => (
+            <div key={daySlot.date}>
+              <button
+                onClick={() => { setSelectedDate(daySlot.day); setSelectedTime(null); }}
+                className={`w-full text-left px-3 py-2 rounded-lg text-sm font-medium transition-fast ${
+                  selectedDate === daySlot.day
+                    ? 'bg-primary text-white'
+                    : 'bg-muted hover:bg-primary-subtle text-foreground'
+                }`}
+              >
+                {daySlot.day}
+              </button>
+              {selectedDate === daySlot.day && (
+                <div className="flex flex-wrap gap-2 mt-2 ml-2 animate-fade-in">
+                  {daySlot.slots.map((t) => (
+                    <button
+                      key={t}
+                      onClick={() => setSelectedTime(t)}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-fast ${
+                        selectedTime === t
+                          ? 'bg-accent text-white border-accent'
+                          : 'bg-card border-border text-foreground hover:border-accent hover:text-accent'
+                      }`}
+                    >
+                      <Clock className="w-3 h-3 inline mr-1" />{t}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+
+        <div className="flex justify-end gap-3 mt-4">
+          <Button variant="outline" onClick={handleClose}>Cancel</Button>
+          <Button
+            className="bg-primary hover:bg-primary/90 text-white"
+            onClick={handleConfirm}
+            disabled={!selectedDate || !selectedTime || saving}
+          >
+            {saving ? (
+              <><RefreshCw className="w-4 h-4 mr-2 animate-spin" /> Saving...</>
+            ) : (
+              <><CheckCircle className="w-4 h-4 mr-2" /> Confirm Reschedule</>
+            )}
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// ─── ScheduleModal (new booking, not reschedule) ─────────────────────────────
 export function ScheduleModal({ open, onClose, coachName, coachAvatar, onConfirm }) {
   const [selectedDate, setSelectedDate] = useState(null);
   const [selectedTime, setSelectedTime] = useState(null);
@@ -119,8 +286,10 @@ export function ScheduleModal({ open, onClose, coachName, coachAvatar, onConfirm
     }
     onConfirm({ date: selectedDate, time: selectedTime });
     toast.success('Session scheduled successfully!', {
-      description: `Your session is booked for ${selectedDate} at ${selectedTime}`
+      description: `Your session is booked for ${selectedDate} at ${selectedTime}`,
     });
+    setSelectedDate(null);
+    setSelectedTime(null);
     onClose();
   };
 
@@ -136,7 +305,7 @@ export function ScheduleModal({ open, onClose, coachName, coachAvatar, onConfirm
         <div className="flex items-center gap-3 p-3 bg-primary-subtle rounded-xl mb-4">
           <Avatar className="w-10 h-10">
             <AvatarImage src={coachAvatar} />
-            <AvatarFallback>{coachName?.split(' ').map(n=>n[0]).join('')}</AvatarFallback>
+            <AvatarFallback>{coachName?.split(' ').map(n => n[0]).join('')}</AvatarFallback>
           </Avatar>
           <div>
             <p className="text-sm font-semibold text-foreground">{coachName}</p>
@@ -194,6 +363,7 @@ export function ScheduleModal({ open, onClose, coachName, coachAvatar, onConfirm
   );
 }
 
+// ─── FeedbackModal ────────────────────────────────────────────────────────────
 export function FeedbackModal({ open, onClose, session, onSubmit }) {
   const [rating, setRating] = useState(0);
   const [comment, setComment] = useState('');
@@ -230,9 +400,9 @@ export function FeedbackModal({ open, onClose, session, onSubmit }) {
         )}
 
         <div className="mb-5">
-          <Label className="text-sm font-semibold mb-3 block">How was your session?</Label>
+          <label className="text-sm font-semibold mb-3 block">How was your session?</label>
           <div className="flex items-center gap-2">
-            {[1,2,3,4,5].map(star => (
+            {[1, 2, 3, 4, 5].map(star => (
               <button
                 key={star}
                 onMouseEnter={() => setHoveredStar(star)}
@@ -259,7 +429,7 @@ export function FeedbackModal({ open, onClose, session, onSubmit }) {
         </div>
 
         <div className="mb-5">
-          <Label className="text-sm font-semibold mb-2 block">Additional Comments (optional)</Label>
+          <label className="text-sm font-semibold mb-2 block">Additional Comments (optional)</label>
           <textarea
             className="w-full rounded-xl border border-border bg-muted/50 p-3 text-sm resize-none min-h-[90px] focus:outline-none focus:ring-2 focus:ring-primary/30"
             placeholder="Share your thoughts about this session..."
@@ -281,8 +451,4 @@ export function FeedbackModal({ open, onClose, session, onSubmit }) {
       </DialogContent>
     </Dialog>
   );
-}
-
-function Label({ className, children }) {
-  return <label className={className}>{children}</label>;
 }

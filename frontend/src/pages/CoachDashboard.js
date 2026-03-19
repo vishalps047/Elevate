@@ -7,7 +7,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '../components/ui/avatar';
 import { Progress } from '../components/ui/progress';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../components/ui/dialog';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
-import { SessionCard, ScheduleModal } from '../components/SessionComponents';
+import { SessionCard, ScheduleModal, RescheduleModal } from '../components/SessionComponents';
 import { toast } from 'sonner';
 import {
   Users, Calendar, Star, TrendingUp, ChevronRight, CheckCircle,
@@ -131,13 +131,14 @@ function AcceptRequestModal({ open, onClose, request, onAccept, onDecline }) {
 }
 
 export default function CoachDashboard() {
-  const { setCurrentRole } = useApp();
+  const { setCurrentRole, addNotificationToRole } = useApp();
   // Always use the coach mock user on this page
   const currentUser = { id: 'c1', name: 'Fatema Hunaid', title: 'Executive Coach', avatar: 'https://randomuser.me/api/portraits/women/44.jpg', coacheesEnrolled: 1, totalCapacity: 2, overallRating: 4.8, totalSessions: 24 };
   const [requests, setRequests] = useState(mockRequests);
   const [sessions, setSessions] = useState(mockCoachSessions);
   const [selectedRequest, setSelectedRequest] = useState(null);
-  const [scheduleModal, setScheduleModal] = useState({ open: false });
+  // Coach uses RescheduleModal, not ScheduleModal, for existing sessions
+  const [rescheduleModal, setRescheduleModal] = useState({ open: false, session: null });
 
   const pendingRequests = requests.filter(r => r.status === 'pending');
   const acceptedRequests = requests.filter(r => r.status === 'accepted');
@@ -145,9 +146,42 @@ export default function CoachDashboard() {
 
   const handleAccept = (id) => {
     setRequests(prev => prev.map(r => r.id === id ? { ...r, status: 'accepted' } : r));
+    // Notify coachee their request was accepted
+    addNotificationToRole('coachee', {
+      type: 'system',
+      title: 'Request Accepted!',
+      message: 'Fatema Hunaid has accepted your coaching request. You can now schedule your first session.',
+      avatar: 'https://randomuser.me/api/portraits/women/44.jpg',
+    });
+    // Notify admin
+    addNotificationToRole('admin', {
+      type: 'system',
+      title: 'Request Accepted',
+      message: 'Fatema Hunaid accepted a coaching request. A new coaching program is now active.',
+      avatar: 'https://randomuser.me/api/portraits/women/44.jpg',
+    });
   };
   const handleDecline = (id) => {
     setRequests(prev => prev.map(r => r.id === id ? { ...r, status: 'declined' } : r));
+    // Notify coachee their request was declined
+    addNotificationToRole('coachee', {
+      type: 'system',
+      title: 'Request Declined',
+      message: 'Fatema Hunaid has declined your coaching request. Please browse other available coaches.',
+      avatar: 'https://randomuser.me/api/portraits/women/44.jpg',
+    });
+    addNotificationToRole('admin', {
+      type: 'system',
+      title: 'Request Declined',
+      message: 'Fatema Hunaid declined a coaching request.',
+      avatar: 'https://randomuser.me/api/portraits/women/44.jpg',
+    });
+  };
+
+  const handleRescheduleConfirm = (slot, session) => {
+    setSessions(prev => prev.map(s =>
+      s.id === session.id ? { ...s, date: slot.date, time: slot.time } : s
+    ));
   };
 
   const ratingData = [
@@ -278,7 +312,7 @@ export default function CoachDashboard() {
                     key={s.id}
                     session={s}
                     role="coach"
-                    onReschedule={() => setScheduleModal({ open: true })}
+                    onReschedule={(s) => setRescheduleModal({ open: true, session: s })}
                   />
                 ))}
               </div>
@@ -377,12 +411,14 @@ export default function CoachDashboard() {
         onDecline={handleDecline}
       />
 
-      <ScheduleModal
-        open={scheduleModal.open}
-        onClose={() => setScheduleModal({ open: false })}
-        coachName="Scheduling Session"
-        coachAvatar={null}
-        onConfirm={(slot) => toast.success(`Session updated for ${slot.date} at ${slot.time}`)}
+      {/* Coach rescheduling → notifies coachee + admin */}
+      <RescheduleModal
+        open={rescheduleModal.open}
+        onClose={() => setRescheduleModal({ open: false, session: null })}
+        session={rescheduleModal.session}
+        initiatorRole="coach"
+        onConfirm={handleRescheduleConfirm}
+        addNotificationToRole={addNotificationToRole}
       />
     </div>
   );

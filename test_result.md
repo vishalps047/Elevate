@@ -213,7 +213,7 @@ frontend:
           agent: "testing"
           comment: "Tested on 2025-03-19. Pending Coach Approvals section displays 3 coaches initially: Priya Sharma (Senior Leadership Coach), Vikram Nair (Organizational Coach), Neha Gupta (Executive Coach). Each coach card shows avatar, name, title badge, experience, location, certifications (tags), and applied date. Review, Approve, and Reject buttons present for each coach. Clicking Approve removes coach from list with success toast 'Coach approved successfully!'. Clicking Review opens Coach Profile Review modal showing full details (email, certifications, applied date, expertise areas) with Reject and Approve Coach buttons. Modal closes correctly."
 
-  - task: "Notifications Panel"
+  - task: "Notifications Panel - Role Isolation"
     implemented: true
     working: true
     file: "/app/frontend/src/components/NotificationPanel.js"
@@ -223,7 +223,22 @@ frontend:
     status_history:
         - working: true
           agent: "testing"
-          comment: "Tested on 2025-03-19. Notifications fully functional: Clicking bell icon in navbar opens notification panel with 'Notifications' heading. Panel displays list of notifications including 'New Coaching Request', 'Session Reminder', 'Feedback Reminder' with proper icons, avatars, timestamps. Unread notifications highlighted with blue dot indicator. Unread count badge visible on bell icon showing number of unread notifications. 'Mark all read' button works correctly - clicking it marks all notifications as read and removes unread badge. Panel closes when clicking outside or pressing Escape."
+          comment: "Tested on 2025-03-19. Basic notifications panel working."
+        - working: true
+          agent: "testing"
+          comment: "Tested on 2025-03-19 (detailed role isolation test). FULLY WORKING: Role-based notification isolation is correctly implemented. Coachee view shows 'Coachee Inbox' with only coachee notifications (Request Accepted, Session Confirmed, Session Reminder, Feedback Required) and correctly excludes coach notifications. Coach view shows 'Coach Inbox' with 3 unread new coaching requests from Alex Morgan, Emily Carter, Jordan Taylor, plus Session Booked and Session Reminder, correctly excludes coachee notifications. Admin view shows 'Admin Inbox' with admin notifications (2x New Coach Registration for Priya Sharma and Vikram Nair, Request Accepted, Weekly Analytics Report). Mark all read functionality working correctly in all roles. Unread badge counts are accurate per role."
+
+  - task: "Notifications - Reschedule Cross-Role Notifications"
+    implemented: true
+    working: false
+    file: "/app/frontend/src/components/SessionComponents.js"
+    stuck_count: 1
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        - working: false
+          agent: "testing"
+          comment: "Tested on 2025-03-19. CRITICAL ISSUE: Reschedule notifications are NOT working. The RescheduleModal correctly shows info boxes ('Your coach (Fatema Hunaid) and the Admin will be notified' for coachee, 'The coachee (Sarah Johnson) and the Admin will be notified' for coach) and allows date/time selection. However, when reschedule is confirmed, the cross-role notifications do NOT appear in the target inboxes. Test 4: Coachee rescheduled session - NO notification appeared in Coach inbox or Admin inbox. Test 5: Coach rescheduled session - NO notification appeared in Coachee inbox or Admin inbox. The addNotificationToRole function is being called in the code (lines 146-157 and 163-174 in SessionComponents.js) but notifications are not persisting or displaying. This is blocking the reschedule notification feature completely."
 
   - task: "My Sessions Page"
     implemented: true
@@ -252,18 +267,21 @@ frontend:
 metadata:
   created_by: "testing_agent"
   version: "1.0"
-  test_sequence: 1
+  test_sequence: 2
   run_ui: true
   last_tested: "2025-03-19"
 
 test_plan:
   current_focus:
-    - "All major flows tested and verified"
-  stuck_tasks: []
-  test_all: true
+    - "Notifications - Reschedule Cross-Role Notifications"
+  stuck_tasks:
+    - "Notifications - Reschedule Cross-Role Notifications"
+  test_all: false
   test_priority: "high_first"
-  notes: "Comprehensive UI testing completed across all 6 major flows. All functionality verified as working correctly."
+  notes: "Detailed notification system testing completed. Role isolation working perfectly but reschedule notifications are broken."
 
 agent_communication:
     - agent: "testing"
       message: "Initial comprehensive testing completed on 2025-03-19. Tested all 6 major flows: (1) Coachee Dashboard - all 7 elements verified working, (2) Coaches Discovery 3-step flow - all steps working including coach selection, goals form, review, and success state, (3) Coach Dashboard - stats, pending requests, accept request modal, and tabs all working, (4) Admin Dashboard - 8 stat cards, 4 charts, and pending coach approvals with approve/review functionality working, (5) Notifications - panel, unread badges, and mark all read working, (6) My Sessions - tabs, session cards, and feedback modal working. Navbar and role switching also verified. Application URL: https://coach-connect-166.preview.emergentagent.com. All core functionality is working correctly with no critical issues found."
+    - agent: "testing"
+      message: "Notification system detailed testing completed on 2025-03-19. Tested 5 scenarios: (1) Coachee role isolation ✓ PASSED - shows only coachee notifications with 'Coachee Inbox' label, (2) Coach role isolation ✓ PASSED - shows only coach notifications with 'Coach Inbox' label and 3 unread count, (3) Admin role isolation ✓ PASSED - shows only admin notifications with 'Admin Inbox' label, (4) Coachee reschedule ✗ FAILED - reschedule modal works but notifications do NOT fire to Coach or Admin, (5) Coach reschedule ✗ FAILED - reschedule modal works but notifications do NOT fire to Coachee or Admin. CRITICAL ISSUE: The addNotificationToRole function in RescheduleModal is not working - notifications are not appearing in target role inboxes after reschedule. This requires immediate fix."

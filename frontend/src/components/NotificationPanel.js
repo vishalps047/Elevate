@@ -1,5 +1,4 @@
-import { useState } from 'react';
-import { Bell, CheckCheck, Clock, Calendar, MessageSquare, AlertCircle, ChevronRight } from 'lucide-react';
+import { Bell, CheckCheck, Clock, Calendar, MessageSquare, AlertCircle, RefreshCw, ChevronRight, UserCheck } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Badge } from '../components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '../components/ui/avatar';
@@ -7,15 +6,23 @@ import { ScrollArea } from '../components/ui/scroll-area';
 import { useApp } from '../context/AppContext';
 
 const typeIcons = {
-  request: { icon: MessageSquare, color: 'text-primary-light bg-primary-subtle' },
-  session: { icon: Calendar, color: 'text-accent bg-accent-subtle' },
-  feedback: { icon: AlertCircle, color: 'text-warning bg-yellow-50' },
-  system: { icon: Bell, color: 'text-success bg-green-50' },
+  request:    { icon: MessageSquare, color: 'text-primary bg-primary-subtle' },
+  session:    { icon: Calendar,      color: 'text-accent bg-accent-subtle' },
+  feedback:   { icon: AlertCircle,   color: 'text-warning bg-yellow-50' },
+  system:     { icon: UserCheck,     color: 'text-success bg-green-50' },
+  reschedule: { icon: RefreshCw,     color: 'text-primary-light bg-primary-subtle' },
+};
+
+const roleLabel = {
+  coachee: { text: 'Coachee Inbox', color: 'bg-primary-subtle text-primary' },
+  coach:   { text: 'Coach Inbox',   color: 'bg-accent-subtle text-accent' },
+  admin:   { text: 'Admin Inbox',   color: 'bg-yellow-50 text-warning' },
 };
 
 export default function NotificationPanel({ onClose }) {
-  const { getNotifications, markAllRead, markRead, unreadCount } = useApp();
+  const { getNotifications, markAllRead, markRead, unreadCount, currentRole } = useApp();
   const notifs = getNotifications();
+  const inbox = roleLabel[currentRole] || roleLabel.coachee;
 
   return (
     <div className="absolute top-12 right-0 w-80 sm:w-96 bg-card rounded-xl shadow-lg border border-border z-50 animate-fade-in">
@@ -24,6 +31,10 @@ export default function NotificationPanel({ onClose }) {
         <div className="flex items-center gap-2">
           <Bell className="w-4 h-4 text-primary" />
           <span className="font-heading font-semibold text-foreground text-sm">Notifications</span>
+          {/* Role badge — makes it crystal clear whose inbox this is */}
+          <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${inbox.color}`}>
+            {inbox.text}
+          </span>
           {unreadCount() > 0 && (
             <Badge className="bg-destructive text-destructive-foreground text-xs px-1.5 py-0 h-5">
               {unreadCount()}

@@ -1,47 +1,76 @@
 import { createContext, useContext, useState } from 'react';
-import { mockNotifications, mockCoachNotifications, mockUsers } from '../data/mockData';
+import {
+  mockCoacheeNotifications,
+  mockCoachNotifications,
+  mockAdminNotifications,
+  mockUsers
+} from '../data/mockData';
 
 const AppContext = createContext();
 
 export const AppProvider = ({ children }) => {
   const [currentRole, setCurrentRole] = useState('coachee'); // 'coachee' | 'coach' | 'admin'
-  const [notifications, setNotifications] = useState(mockNotifications);
+
+  // ── Separate notification stores per role ──────────────────────────────────
+  const [coacheeNotifications, setCoacheeNotifications] = useState(mockCoacheeNotifications);
   const [coachNotifications, setCoachNotifications] = useState(mockCoachNotifications);
-  const [requests, setRequests] = useState(null); // set from pages
+  const [adminNotifications, setAdminNotifications] = useState(mockAdminNotifications);
 
   const currentUser = mockUsers[currentRole] || mockUsers.coachee;
 
+  // ── Return notifications for the CURRENTLY LOGGED-IN role only ─────────────
   const getNotifications = () => {
     if (currentRole === 'coach') return coachNotifications;
-    return notifications;
+    if (currentRole === 'admin') return adminNotifications;
+    return coacheeNotifications;
   };
 
+  // ── Unread count for current role ──────────────────────────────────────────
   const unreadCount = () => getNotifications().filter(n => !n.read).length;
 
+  // ── Mark all read for current role ─────────────────────────────────────────
   const markAllRead = () => {
     if (currentRole === 'coach') {
       setCoachNotifications(prev => prev.map(n => ({ ...n, read: true })));
+    } else if (currentRole === 'admin') {
+      setAdminNotifications(prev => prev.map(n => ({ ...n, read: true })));
     } else {
-      setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+      setCoacheeNotifications(prev => prev.map(n => ({ ...n, read: true })));
     }
   };
 
+  // ── Mark single notification read for current role ─────────────────────────
   const markRead = (id) => {
     if (currentRole === 'coach') {
       setCoachNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
+    } else if (currentRole === 'admin') {
+      setAdminNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
     } else {
-      setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
+      setCoacheeNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
     }
   };
 
-  const addNotification = (notif) => {
-    const newNotif = { id: `n${Date.now()}`, ...notif, time: 'just now', read: false };
-    if (currentRole === 'coach') {
+  // ── Add notification to a SPECIFIC role's inbox (cross-role dispatch) ──────
+  // targetRole: 'coachee' | 'coach' | 'admin'
+  const addNotificationToRole = (targetRole, notif) => {
+    const newNotif = {
+      id: `n${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
+      ...notif,
+      time: 'just now',
+      read: false,
+      role: targetRole,
+    };
+    if (targetRole === 'coach') {
       setCoachNotifications(prev => [newNotif, ...prev]);
+    } else if (targetRole === 'admin') {
+      setAdminNotifications(prev => [newNotif, ...prev]);
     } else {
-      setNotifications(prev => [newNotif, ...prev]);
+      setCoacheeNotifications(prev => [newNotif, ...prev]);
     }
   };
+
+  // ── Convenience: add to current role's own inbox ───────────────────────────
+  const addNotification = (notif) => addNotificationToRole(currentRole, notif);
 
   return (
     <AppContext.Provider value={{
@@ -53,6 +82,7 @@ export const AppProvider = ({ children }) => {
       markAllRead,
       markRead,
       addNotification,
+      addNotificationToRole, // exposed for cross-role dispatching on reschedule
     }}>
       {children}
     </AppContext.Provider>

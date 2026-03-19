@@ -1,16 +1,19 @@
 import { useState } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
-import { SessionCard, FeedbackModal, ScheduleModal } from '../components/SessionComponents';
+import { SessionCard, FeedbackModal, ScheduleModal, RescheduleModal } from '../components/SessionComponents';
 import PageHeader from '../components/PageHeader';
 import { Button } from '../components/ui/button';
 import { Calendar, Plus } from 'lucide-react';
 import { mockSessions } from '../data/mockData';
+import { useApp } from '../context/AppContext';
 import { toast } from 'sonner';
 
 export default function SessionsPage() {
+  const { addNotificationToRole } = useApp();
   const [sessions, setSessions] = useState(mockSessions);
   const [feedbackModal, setFeedbackModal] = useState({ open: false, session: null });
   const [scheduleModal, setScheduleModal] = useState({ open: false });
+  const [rescheduleModal, setRescheduleModal] = useState({ open: false, session: null });
 
   const upcoming = sessions.filter(s => s.status === 'upcoming');
   const completed = sessions.filter(s => s.status === 'completed');
@@ -20,6 +23,12 @@ export default function SessionsPage() {
       s.id === feedbackModal.session?.id
         ? { ...s, feedbackSubmitted: true, rating, feedbackComment: comment }
         : s
+    ));
+  };
+
+  const handleRescheduleConfirm = (slot, session) => {
+    setSessions(prev => prev.map(s =>
+      s.id === session.id ? { ...s, date: slot.date, time: slot.time } : s
     ));
   };
 
@@ -63,7 +72,7 @@ export default function SessionsPage() {
                     session={s}
                     role="coachee"
                     onFeedback={(s) => setFeedbackModal({ open: true, session: s })}
-                    onReschedule={() => setScheduleModal({ open: true })}
+                    onReschedule={(s) => setRescheduleModal({ open: true, session: s })}
                   />
                 ))}
               </div>
@@ -116,6 +125,15 @@ export default function SessionsPage() {
           };
           setSessions(prev => [newSession, ...prev]);
         }}
+      />
+      {/* Reschedule: coachee rescheduling → notifies coach + admin */}
+      <RescheduleModal
+        open={rescheduleModal.open}
+        onClose={() => setRescheduleModal({ open: false, session: null })}
+        session={rescheduleModal.session}
+        initiatorRole="coachee"
+        onConfirm={handleRescheduleConfirm}
+        addNotificationToRole={addNotificationToRole}
       />
     </div>
   );
