@@ -40,7 +40,7 @@ function StatCard({ icon: Icon, value, label, sub, color = 'primary' }) {
 }
 
 export default function CoacheeDashboard() {
-  const { currentUser, addNotificationToRole } = useApp();
+  const { currentUser } = useApp();
   const navigate = useNavigate();
   const [sessions, setSessions] = useState(mockSessions);
   const [feedbackModal, setFeedbackModal] = useState({ open: false, session: null });
@@ -259,7 +259,6 @@ export default function CoacheeDashboard() {
         session={rescheduleModal.session}
         initiatorRole="coachee"
         onConfirm={handleRescheduleConfirm}
-        addNotificationToRole={addNotificationToRole}
       />
     </div>
   );

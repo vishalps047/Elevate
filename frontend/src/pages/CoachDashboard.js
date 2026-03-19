@@ -418,7 +418,6 @@ export default function CoachDashboard() {
         session={rescheduleModal.session}
         initiatorRole="coach"
         onConfirm={handleRescheduleConfirm}
-        addNotificationToRole={addNotificationToRole}
       />
     </div>
   );

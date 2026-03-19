@@ -5,11 +5,9 @@ import PageHeader from '../components/PageHeader';
 import { Button } from '../components/ui/button';
 import { Calendar, Plus } from 'lucide-react';
 import { mockSessions } from '../data/mockData';
-import { useApp } from '../context/AppContext';
 import { toast } from 'sonner';
 
 export default function SessionsPage() {
-  const { addNotificationToRole } = useApp();
   const [sessions, setSessions] = useState(mockSessions);
   const [feedbackModal, setFeedbackModal] = useState({ open: false, session: null });
   const [scheduleModal, setScheduleModal] = useState({ open: false });
@@ -133,7 +131,6 @@ export default function SessionsPage() {
         session={rescheduleModal.session}
         initiatorRole="coachee"
         onConfirm={handleRescheduleConfirm}
-        addNotificationToRole={addNotificationToRole}
       />
     </div>
   );

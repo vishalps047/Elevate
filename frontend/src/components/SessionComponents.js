@@ -6,6 +6,7 @@ import { Card, CardContent } from '../components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../components/ui/dialog';
 import { toast } from 'sonner';
 import { availabilitySlots } from '../data/mockData';
+import { useApp } from '../context/AppContext';
 
 const statusConfig = {
   upcoming: { label: 'Upcoming', className: 'status-pending', icon: Clock },
@@ -47,17 +48,13 @@ export function SessionCard({ session, role = 'coachee', onFeedback, onReschedul
                   <Clock className="w-3.5 h-3.5" />
                   <span className="text-xs">{session.time} · {session.duration} min</span>
                 </div>
-                <div className="flex items-center gap-1 text-muted-foreground">
-                  <span className="text-xs">Session {session.sessionNumber}/{session.totalSessions}</span>
-                </div>
+                <span className="text-xs text-muted-foreground">Session {session.sessionNumber}/{session.totalSessions}</span>
               </div>
             </div>
           </div>
-          <div className="flex flex-col items-end gap-2">
-            <span className={`text-xs px-2.5 py-1 rounded-full font-medium flex items-center gap-1 ${config.className}`}>
-              <Icon className="w-3 h-3" /> {config.label}
-            </span>
-          </div>
+          <span className={`text-xs px-2.5 py-1 rounded-full font-medium flex items-center gap-1 flex-shrink-0 ${config.className}`}>
+            <Icon className="w-3 h-3" /> {config.label}
+          </span>
         </div>
 
         {/* Upcoming actions */}
@@ -110,13 +107,12 @@ export function SessionCard({ session, role = 'coachee', onFeedback, onReschedul
   );
 }
 
-// ─── RescheduleModal ─────────────────────────────────────────────────────────
-// Props:
-//   open, onClose, session
-//   initiatorRole : 'coachee' | 'coach'   (who is rescheduling)
-//   onConfirm(slot, session)              (update the session in parent state)
-//   addNotificationToRole(role, notif)    (from AppContext — to fire cross-role notifs)
-export function RescheduleModal({ open, onClose, session, initiatorRole = 'coachee', onConfirm, addNotificationToRole }) {
+// ─── RescheduleModal ────────────────────────────────────────────────────────
+// Reads addNotificationToRole directly from AppContext — no prop-passing needed
+// initiatorRole: 'coachee' | 'coach'
+// onConfirm(slot, session) — parent updates session state
+export function RescheduleModal({ open, onClose, session, initiatorRole = 'coachee', onConfirm }) {
+  const { addNotificationToRole } = useApp();
   const [selectedDate, setSelectedDate] = useState(null);
   const [selectedTime, setSelectedTime] = useState(null);
   const [saving, setSaving] = useState(false);
@@ -134,10 +130,10 @@ export function RescheduleModal({ open, onClose, session, initiatorRole = 'coach
     }
     setSaving(true);
     setTimeout(() => {
-      // Update session in parent
-      onConfirm({ date: selectedDate, time: selectedTime }, session);
+      // 1. Update session in parent state
+      if (onConfirm) onConfirm({ date: selectedDate, time: selectedTime }, session);
 
-      // ── Fire cross-role notifications ────────────────────────────────
+      // 2. Fire cross-role notifications directly from context
       const topic = session?.topic || 'Coaching Session';
       const sessionNum = session?.sessionNumber || '';
 
@@ -146,34 +142,34 @@ export function RescheduleModal({ open, onClose, session, initiatorRole = 'coach
         addNotificationToRole('coach', {
           type: 'reschedule',
           title: 'Session Rescheduled by Coachee',
-          message: `Sarah Johnson has rescheduled Session ${sessionNum} (${topic}) to ${selectedDate} at ${selectedTime}.`,
+          message: `Sarah Johnson rescheduled Session ${sessionNum} (${topic}) to ${selectedDate} at ${selectedTime}.`,
           avatar: 'https://randomuser.me/api/portraits/women/10.jpg',
         });
         addNotificationToRole('admin', {
           type: 'reschedule',
           title: 'Session Rescheduled',
-          message: `Sarah Johnson rescheduled Session ${sessionNum} with Fatema Hunaid to ${selectedDate} at ${selectedTime}.`,
+          message: `Sarah Johnson rescheduled Session ${sessionNum} with Fatema Hunaid → ${selectedDate} at ${selectedTime}.`,
           avatar: 'https://randomuser.me/api/portraits/women/10.jpg',
         });
         toast.success('Session rescheduled!', {
-          description: `New slot: ${selectedDate} at ${selectedTime}. Coach has been notified.`,
+          description: `New slot: ${selectedDate} at ${selectedTime}. Coach & Admin notified.`,
         });
       } else {
         // Coach rescheduled → notify Coachee + Admin
         addNotificationToRole('coachee', {
           type: 'reschedule',
           title: 'Session Rescheduled by Your Coach',
-          message: `Fatema Hunaid has rescheduled your Session ${sessionNum} (${topic}) to ${selectedDate} at ${selectedTime}.`,
+          message: `Fatema Hunaid rescheduled Session ${sessionNum} (${topic}) to ${selectedDate} at ${selectedTime}.`,
           avatar: 'https://randomuser.me/api/portraits/women/44.jpg',
         });
         addNotificationToRole('admin', {
           type: 'reschedule',
           title: 'Session Rescheduled',
-          message: `Fatema Hunaid rescheduled Session ${sessionNum} with Sarah Johnson to ${selectedDate} at ${selectedTime}.`,
+          message: `Fatema Hunaid rescheduled Session ${sessionNum} with Sarah Johnson → ${selectedDate} at ${selectedTime}.`,
           avatar: 'https://randomuser.me/api/portraits/women/44.jpg',
         });
         toast.success('Session rescheduled!', {
-          description: `New slot: ${selectedDate} at ${selectedTime}. Coachee & Admin have been notified.`,
+          description: `New slot: ${selectedDate} at ${selectedTime}. Coachee & Admin notified.`,
         });
       }
 
@@ -196,7 +192,7 @@ export function RescheduleModal({ open, onClose, session, initiatorRole = 'coach
           </DialogTitle>
         </DialogHeader>
 
-        {/* Session info */}
+        {/* Current session info */}
         {session && (
           <div className="flex items-center gap-3 p-3 bg-primary-subtle rounded-xl mb-1">
             <Avatar className="w-10 h-10">
@@ -210,7 +206,7 @@ export function RescheduleModal({ open, onClose, session, initiatorRole = 'coach
           </div>
         )}
 
-        {/* Who gets notified */}
+        {/* Who gets notified banner */}
         <div className="flex items-start gap-2 bg-accent-subtle border border-accent/20 rounded-xl px-3 py-2.5 mb-2">
           <AlertCircle className="w-4 h-4 text-accent flex-shrink-0 mt-0.5" />
           <p className="text-xs text-foreground/80">
@@ -262,11 +258,10 @@ export function RescheduleModal({ open, onClose, session, initiatorRole = 'coach
             onClick={handleConfirm}
             disabled={!selectedDate || !selectedTime || saving}
           >
-            {saving ? (
-              <><RefreshCw className="w-4 h-4 mr-2 animate-spin" /> Saving...</>
-            ) : (
-              <><CheckCircle className="w-4 h-4 mr-2" /> Confirm Reschedule</>
-            )}
+            {saving
+              ? <><RefreshCw className="w-4 h-4 mr-2 animate-spin" /> Saving...</>
+              : <><CheckCircle className="w-4 h-4 mr-2" /> Confirm Reschedule</>
+            }
           </Button>
         </div>
       </DialogContent>
@@ -274,7 +269,7 @@ export function RescheduleModal({ open, onClose, session, initiatorRole = 'coach
   );
 }
 
-// ─── ScheduleModal (new booking, not reschedule) ─────────────────────────────
+// ─── ScheduleModal (new session booking) ────────────────────────────────────
 export function ScheduleModal({ open, onClose, coachName, coachAvatar, onConfirm }) {
   const [selectedDate, setSelectedDate] = useState(null);
   const [selectedTime, setSelectedTime] = useState(null);
@@ -363,7 +358,7 @@ export function ScheduleModal({ open, onClose, coachName, coachAvatar, onConfirm
   );
 }
 
-// ─── FeedbackModal ────────────────────────────────────────────────────────────
+// ─── FeedbackModal ──────────────────────────────────────────────────────────
 export function FeedbackModal({ open, onClose, session, onSubmit }) {
   const [rating, setRating] = useState(0);
   const [comment, setComment] = useState('');
