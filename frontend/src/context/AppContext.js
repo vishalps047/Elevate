@@ -9,67 +9,55 @@ import {
 const AppContext = createContext();
 
 export const AppProvider = ({ children }) => {
-  const [currentRole, setCurrentRole] = useState('coachee'); // 'coachee' | 'coach' | 'admin'
+  const [currentRole, setCurrentRole] = useState('coachee');
 
-  // ── Separate notification stores per role ──────────────────────────────────
-  const [coacheeNotifications, setCoacheeNotifications] = useState(mockCoacheeNotifications);
-  const [coachNotifications, setCoachNotifications] = useState(mockCoachNotifications);
-  const [adminNotifications, setAdminNotifications] = useState(mockAdminNotifications);
+  // ── Single flat store: all notifications for all roles in one array ───────
+  // Each notification has a `role` field: 'coachee' | 'coach' | 'admin'
+  // Using a single setter eliminates all cross-role state update complexity.
+  const [allNotifications, setAllNotifications] = useState([
+    ...mockCoacheeNotifications,
+    ...mockCoachNotifications,
+    ...mockAdminNotifications,
+  ]);
 
   const currentUser = mockUsers[currentRole] || mockUsers.coachee;
 
-  // ── Return notifications for the CURRENTLY LOGGED-IN role only ─────────────
-  const getNotifications = () => {
-    if (currentRole === 'coach') return coachNotifications;
-    if (currentRole === 'admin') return adminNotifications;
-    return coacheeNotifications;
-  };
+  // ── Return only notifications for the currently active role ──────────────
+  const getNotifications = () =>
+    allNotifications.filter(n => n.role === currentRole);
 
-  // ── Unread count for current role ──────────────────────────────────────────
-  const unreadCount = () => getNotifications().filter(n => !n.read).length;
+  // ── Unread count for the current role ────────────────────────────────────
+  const unreadCount = () =>
+    allNotifications.filter(n => n.role === currentRole && !n.read).length;
 
-  // ── Mark all read for current role ─────────────────────────────────────────
+  // ── Mark all read for current role ───────────────────────────────────────
   const markAllRead = () => {
-    if (currentRole === 'coach') {
-      setCoachNotifications(prev => prev.map(n => ({ ...n, read: true })));
-    } else if (currentRole === 'admin') {
-      setAdminNotifications(prev => prev.map(n => ({ ...n, read: true })));
-    } else {
-      setCoacheeNotifications(prev => prev.map(n => ({ ...n, read: true })));
-    }
+    setAllNotifications(prev =>
+      prev.map(n => n.role === currentRole ? { ...n, read: true } : n)
+    );
   };
 
-  // ── Mark single notification read for current role ─────────────────────────
+  // ── Mark single notification as read ─────────────────────────────────────
   const markRead = (id) => {
-    if (currentRole === 'coach') {
-      setCoachNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
-    } else if (currentRole === 'admin') {
-      setAdminNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
-    } else {
-      setCoacheeNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
-    }
+    setAllNotifications(prev =>
+      prev.map(n => n.id === id ? { ...n, read: true } : n)
+    );
   };
 
-  // ── Add notification to a SPECIFIC role's inbox (cross-role dispatch) ──────
+  // ── Add notification to ANY role's inbox (single setState call) ───────────
   // targetRole: 'coachee' | 'coach' | 'admin'
   const addNotificationToRole = (targetRole, notif) => {
     const newNotif = {
       id: `n${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
       ...notif,
+      role: targetRole,
       time: 'just now',
       read: false,
-      role: targetRole,
     };
-    if (targetRole === 'coach') {
-      setCoachNotifications(prev => [newNotif, ...prev]);
-    } else if (targetRole === 'admin') {
-      setAdminNotifications(prev => [newNotif, ...prev]);
-    } else {
-      setCoacheeNotifications(prev => [newNotif, ...prev]);
-    }
+    setAllNotifications(prev => [newNotif, ...prev]);
   };
 
-  // ── Convenience: add to current role's own inbox ───────────────────────────
+  // ── Convenience: add to current role's own inbox ─────────────────────────
   const addNotification = (notif) => addNotificationToRole(currentRole, notif);
 
   return (
@@ -82,7 +70,7 @@ export const AppProvider = ({ children }) => {
       markAllRead,
       markRead,
       addNotification,
-      addNotificationToRole, // exposed for cross-role dispatching on reschedule
+      addNotificationToRole,
     }}>
       {children}
     </AppContext.Provider>
