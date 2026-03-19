@@ -1,4 +1,4 @@
-import { createContext, useContext, useState } from 'react';
+import { createContext, useContext, useState, useEffect } from 'react';
 import {
   mockCoacheeNotifications,
   mockCoachNotifications,
@@ -8,17 +8,39 @@ import {
 
 const AppContext = createContext();
 
-export const AppProvider = ({ children }) => {
-  const [currentRole, setCurrentRole] = useState('coachee');
+const STORAGE_KEY = 'elevate_notifications';
 
-  // ── Single flat store: all notifications for all roles in one array ───────
-  // Each notification has a `role` field: 'coachee' | 'coach' | 'admin'
-  // Using a single setter eliminates all cross-role state update complexity.
-  const [allNotifications, setAllNotifications] = useState([
+// Load from localStorage on startup, fallback to mock data
+function loadNotifications() {
+  try {
+    const stored = localStorage.getItem(STORAGE_KEY);
+    if (stored) {
+      const parsed = JSON.parse(stored);
+      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+    }
+  } catch (e) { /* ignore */ }
+  // First load — seed with mock data
+  return [
     ...mockCoacheeNotifications,
     ...mockCoachNotifications,
     ...mockAdminNotifications,
-  ]);
+  ];
+}
+
+export const AppProvider = ({ children }) => {
+  const [currentRole, setCurrentRole] = useState('coachee');
+
+  // ── Single flat store: all notifications for all roles ────────────────────
+  // Each notification has a `role` field: 'coachee' | 'coach' | 'admin'
+  // localStorage ensures notifications survive React Router navigations.
+  const [allNotifications, setAllNotifications] = useState(loadNotifications);
+
+  // Sync to localStorage on every change
+  useEffect(() => {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(allNotifications));
+    } catch (e) { /* ignore */ }
+  }, [allNotifications]);
 
   const currentUser = mockUsers[currentRole] || mockUsers.coachee;
 
@@ -30,7 +52,7 @@ export const AppProvider = ({ children }) => {
   const unreadCount = () =>
     allNotifications.filter(n => n.role === currentRole && !n.read).length;
 
-  // ── Mark all read for current role ───────────────────────────────────────
+  // ── Mark all read for the current role ───────────────────────────────────
   const markAllRead = () => {
     setAllNotifications(prev =>
       prev.map(n => n.role === currentRole ? { ...n, read: true } : n)
@@ -44,7 +66,7 @@ export const AppProvider = ({ children }) => {
     );
   };
 
-  // ── Add notification to ANY role's inbox (single setState call) ───────────
+  // ── Add notification to ANY role's inbox (one setState call) ──────────────
   // targetRole: 'coachee' | 'coach' | 'admin'
   const addNotificationToRole = (targetRole, notif) => {
     const newNotif = {
@@ -57,7 +79,7 @@ export const AppProvider = ({ children }) => {
     setAllNotifications(prev => [newNotif, ...prev]);
   };
 
-  // ── Convenience: add to current role's own inbox ─────────────────────────
+  // ── Add to current role's own inbox ──────────────────────────────────────
   const addNotification = (notif) => addNotificationToRole(currentRole, notif);
 
   return (
