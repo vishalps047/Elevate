@@ -128,51 +128,52 @@ export function RescheduleModal({ open, onClose, session, initiatorRole = 'coach
       toast.error('Please select a date and time slot');
       return;
     }
+
+    // ── Dispatch cross-role notifications SYNCHRONOUSLY before any timeout ──
+    const topic = session?.topic || 'Coaching Session';
+    const sessionNum = session?.sessionNumber || '';
+
+    if (initiatorRole === 'coachee') {
+      addNotificationToRole('coach', {
+        type: 'reschedule',
+        title: 'Session Rescheduled by Coachee',
+        message: `Sarah Johnson rescheduled Session ${sessionNum} (${topic}) to ${selectedDate} at ${selectedTime}.`,
+        avatar: 'https://randomuser.me/api/portraits/women/10.jpg',
+      });
+      addNotificationToRole('admin', {
+        type: 'reschedule',
+        title: 'Session Rescheduled',
+        message: `Sarah Johnson rescheduled Session ${sessionNum} with Fatema Hunaid → ${selectedDate} at ${selectedTime}.`,
+        avatar: 'https://randomuser.me/api/portraits/women/10.jpg',
+      });
+    } else {
+      addNotificationToRole('coachee', {
+        type: 'reschedule',
+        title: 'Session Rescheduled by Your Coach',
+        message: `Fatema Hunaid rescheduled Session ${sessionNum} (${topic}) to ${selectedDate} at ${selectedTime}.`,
+        avatar: 'https://randomuser.me/api/portraits/women/44.jpg',
+      });
+      addNotificationToRole('admin', {
+        type: 'reschedule',
+        title: 'Session Rescheduled',
+        message: `Fatema Hunaid rescheduled Session ${sessionNum} with Sarah Johnson → ${selectedDate} at ${selectedTime}.`,
+        avatar: 'https://randomuser.me/api/portraits/women/44.jpg',
+      });
+    }
+
     setSaving(true);
+    // Visual saving delay — UI update + session state + toast + close
     setTimeout(() => {
-      // 1. Update session in parent state
       if (onConfirm) onConfirm({ date: selectedDate, time: selectedTime }, session);
-
-      // 2. Fire cross-role notifications directly from context
-      const topic = session?.topic || 'Coaching Session';
-      const sessionNum = session?.sessionNumber || '';
-
       if (initiatorRole === 'coachee') {
-        // Coachee rescheduled → notify Coach + Admin
-        addNotificationToRole('coach', {
-          type: 'reschedule',
-          title: 'Session Rescheduled by Coachee',
-          message: `Sarah Johnson rescheduled Session ${sessionNum} (${topic}) to ${selectedDate} at ${selectedTime}.`,
-          avatar: 'https://randomuser.me/api/portraits/women/10.jpg',
-        });
-        addNotificationToRole('admin', {
-          type: 'reschedule',
-          title: 'Session Rescheduled',
-          message: `Sarah Johnson rescheduled Session ${sessionNum} with Fatema Hunaid → ${selectedDate} at ${selectedTime}.`,
-          avatar: 'https://randomuser.me/api/portraits/women/10.jpg',
-        });
         toast.success('Session rescheduled!', {
           description: `New slot: ${selectedDate} at ${selectedTime}. Coach & Admin notified.`,
         });
       } else {
-        // Coach rescheduled → notify Coachee + Admin
-        addNotificationToRole('coachee', {
-          type: 'reschedule',
-          title: 'Session Rescheduled by Your Coach',
-          message: `Fatema Hunaid rescheduled Session ${sessionNum} (${topic}) to ${selectedDate} at ${selectedTime}.`,
-          avatar: 'https://randomuser.me/api/portraits/women/44.jpg',
-        });
-        addNotificationToRole('admin', {
-          type: 'reschedule',
-          title: 'Session Rescheduled',
-          message: `Fatema Hunaid rescheduled Session ${sessionNum} with Sarah Johnson → ${selectedDate} at ${selectedTime}.`,
-          avatar: 'https://randomuser.me/api/portraits/women/44.jpg',
-        });
         toast.success('Session rescheduled!', {
           description: `New slot: ${selectedDate} at ${selectedTime}. Coachee & Admin notified.`,
         });
       }
-
       reset();
       onClose();
     }, 900);
