@@ -69,12 +69,8 @@ export function CoachCard({ coach, onSelectCoach, isSelected = false, mode = 'se
           </Badge>
         </div>
 
-        {/* Rating & Location */}
+        {/* Location */}
         <div className="flex items-center gap-3 mb-3">
-          <div className="flex items-center gap-1">
-            <StarRating rating={coach.rating} />
-            <span className="text-sm font-semibold text-warning">{coach.rating}</span>
-          </div>
           <div className="flex items-center gap-1 text-muted-foreground">
             <MapPin className="w-3 h-3" />
             <span className="text-xs">{coach.location}</span>

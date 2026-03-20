@@ -5,7 +5,7 @@ import { Button } from '../components/ui/button';
 import { Card, CardContent } from '../components/ui/card';
 import { Badge } from '../components/ui/badge';
 import {
-  TrendingUp, Users, Calendar, Target, Star, Clock, ChevronRight,
+  TrendingUp, Users, Calendar, Target, Clock, ChevronRight,
   Bell, ArrowRight, BookOpen, CheckCircle, AlertCircle
 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '../components/ui/avatar';
@@ -107,7 +107,7 @@ export default function CoacheeDashboard() {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
           <StatCard icon={Calendar} value={upcomingSessions.length} label="Upcoming Sessions" sub="Next: Feb 10" color="primary" />
           <StatCard icon={CheckCircle} value={completedSessions.length} label="Completed Sessions" sub="This program" color="success" />
-          <StatCard icon={Star} value="4.8" label="Coach Rating" sub="Fatema Hunaid" color="warning" />
+          <StatCard icon={Users} value="1" label="Active Coaches" sub="Fatema Hunaid" color="warning" />
           <StatCard icon={TrendingUp} value="3/6" label="Program Progress" sub="Sessions completed" color="accent" />
         </div>
 

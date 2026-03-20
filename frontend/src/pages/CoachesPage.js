@@ -19,7 +19,7 @@ export default function CoachesPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedExpertise, setSelectedExpertise] = useState(expertiseOptions);
   const [requestSent, setRequestSent] = useState(false);
-  const [sortBy, setSortBy] = useState('rating');
+  const [sortBy, setSortBy] = useState('slots');
 
   const handleSelectCoach = (coach) => {
     setSelectedCoach(coach);
@@ -39,8 +39,8 @@ export default function CoachesPage() {
       coach.expertise.some(e => selectedExpertise.includes(e));
     return matchesSearch && matchesExpertise;
   }).sort((a, b) => {
-    if (sortBy === 'rating') return b.rating - a.rating;
     if (sortBy === 'slots') return b.slots.available - a.slots.available;
+    if (sortBy === 'name') return a.name.localeCompare(b.name);
     return 0;
   });
 
@@ -115,8 +115,8 @@ export default function CoachesPage() {
                   </button>
                 )}
               </div>
-              <Button variant="outline" className="h-11 gap-2 px-4" onClick={() => setSortBy(sortBy === 'rating' ? 'slots' : 'rating')}>
-                <SlidersHorizontal className="w-4 h-4" /> Sort by {sortBy === 'rating' ? 'Rating' : 'Slots'}
+              <Button variant="outline" className="h-11 gap-2 px-4" onClick={() => setSortBy(sortBy === 'slots' ? 'name' : 'slots')}>
+                <SlidersHorizontal className="w-4 h-4" /> Sort by {sortBy === 'slots' ? 'Slots' : 'Name'}
               </Button>
             </div>
 

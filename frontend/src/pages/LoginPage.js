@@ -4,7 +4,7 @@ import { Button } from '../components/ui/button';
 import { Card, CardContent } from '../components/ui/card';
 import { Badge } from '../components/ui/badge';
 import { useApp } from '../context/AppContext';
-import { Target, Users, BarChart2, ChevronRight, Shield, TrendingUp, Award, Clock, Star } from 'lucide-react';
+import { Target, Users, BarChart2, ChevronRight, Shield, TrendingUp, Award, Clock } from 'lucide-react';
 
 export default function LoginPage() {
   const { setCurrentRole } = useApp();
@@ -79,7 +79,6 @@ export default function LoginPage() {
             {[
               { icon: Users, label: '50+ Active Coaches' },
               { icon: TrendingUp, label: '248 Sessions Completed' },
-              { icon: Star, label: '4.8 Avg Rating' },
               { icon: Award, label: 'ICF Certified' },
             ].map(item => (
               <div key={item.label} className="flex items-center gap-2 text-white/80">

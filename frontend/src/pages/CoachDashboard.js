@@ -10,11 +10,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs'
 import { SessionCard, ScheduleModal, RescheduleModal } from '../components/SessionComponents';
 import { toast } from 'sonner';
 import {
-  Users, Calendar, Star, TrendingUp, ChevronRight, CheckCircle,
+  Users, Calendar, TrendingUp, ChevronRight, CheckCircle,
   XCircle, Clock, Eye, BarChart2, Award, AlertTriangle, Info
 } from 'lucide-react';
 import { mockRequests, mockCoachSessions } from '../data/mockData';
-import { StarRating } from '../components/CoachCard';
 
 function AcceptRequestModal({ open, onClose, request, onAccept, onDecline }) {
   const [action, setAction] = useState(null);
@@ -184,14 +183,6 @@ export default function CoachDashboard() {
     ));
   };
 
-  const ratingData = [
-    { label: '5 Star', count: 18, pct: 75 },
-    { label: '4 Star', count: 4, pct: 17 },
-    { label: '3 Star', count: 1, pct: 4 },
-    { label: '2 Star', count: 1, pct: 4 },
-    { label: '1 Star', count: 0, pct: 0 },
-  ];
-
   return (
     <div className="min-h-screen bg-background">
       {/* Header Banner */}
@@ -208,10 +199,6 @@ export default function CoachDashboard() {
               <div>
                 <h3 className="font-heading font-semibold text-white">{currentUser?.name}</h3>
                 <p className="text-white/70 text-xs">{currentUser?.title}</p>
-                <div className="flex items-center gap-1 mt-1">
-                  <StarRating rating={currentUser?.overallRating || 4.8} />
-                  <span className="text-white/80 text-xs">{currentUser?.overallRating || 4.8}</span>
-                </div>
               </div>
             </div>
             {/* Stats */}
@@ -319,33 +306,8 @@ export default function CoachDashboard() {
             </div>
           </div>
 
-          {/* Right Panel: Rating & Stats */}
+          {/* Right Panel: Stats */}
           <div className="space-y-4">
-            <Card className="shadow-card">
-              <CardContent className="p-5">
-                <h3 className="font-heading font-semibold text-foreground mb-4">Overall Rating</h3>
-                <div className="text-center mb-4">
-                  <p className="text-5xl font-heading font-bold text-warning">{currentUser?.overallRating || 4.8}</p>
-                  <StarRating rating={currentUser?.overallRating || 4.8} size="lg" />
-                  <p className="text-xs text-muted-foreground mt-1">Based on {currentUser?.totalSessions || 24} Sessions</p>
-                </div>
-                <div className="space-y-2">
-                  {ratingData.map(r => (
-                    <div key={r.label} className="flex items-center gap-2">
-                      <span className="text-xs text-muted-foreground w-12">{r.label}</span>
-                      <div className="flex-1 bg-muted rounded-full h-1.5">
-                        <div
-                          className="h-full rounded-full bg-warning transition-smooth"
-                          style={{ width: `${r.pct}%` }}
-                        />
-                      </div>
-                      <span className="text-xs text-muted-foreground w-4">{r.count}</span>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-
             {/* Active Coachees */}
             <Card className="shadow-card">
               <CardContent className="p-5">

@@ -1,0 +1,71 @@
+{
+  "summary": "Frontend testing completed for coach ratings visibility feature. Verified ratings are hidden from non-admin roles (Coachee, Coach) and visible only to Admin. All 9 test cases passed.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Admin Dashboard", "issues": ["Avg Session Rating shows 4.7 instead of 4.8 mentioned in requirements - minor mock data discrepancy"]}
+    ]
+  },
+  "test_report_links": ["/app/test_reports/iteration_1.json"],
+  "action_items": [],
+  "critical_code_review_comments": [],
+  "updated_files": [],
+  "success_rate": {"backend": "N/A - frontend only test", "frontend": "100%"},
+  "test_credentials": "No credentials needed. Role selection buttons on /login page",
+  "seed_data_creation": "None",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Tested rating visibility across all roles. Login page (/login) has role selection. Coachee dashboard shows 'Active Coaches' instead of 'Coach Rating'. Coach dashboard has no star rating or 'Overall Rating' card. Coaches page sort button shows 'Sort by Slots/Name'. Request wizard step 3 shows no rating next to coach location. Admin dashboard correctly shows 'Avg Session Rating' (4.7) and 'Rating Distribution' chart.",
+  "test_results": {
+    "login_page": {
+      "test": "Login page should NOT show '4.8 Avg Rating' stat",
+      "result": "PASS",
+      "details": "Header shows '50+ Active Coaches', '248 Sessions Completed', 'ICF Certified' - no rating stat"
+    },
+    "coachee_dashboard": {
+      "test": "Coachee Dashboard should show 'Active Coaches' instead of 'Coach Rating'",
+      "result": "PASS",
+      "details": "Stat card shows '1 Active Coaches' with Fatema Hunaid listed"
+    },
+    "coach_dashboard_header": {
+      "test": "Coach Dashboard header should NOT show star rating next to coach name",
+      "result": "PASS",
+      "details": "Header shows 'Fatema Hunaid, Executive Coach' with no star rating"
+    },
+    "coach_dashboard_overall_rating": {
+      "test": "Coach Dashboard should NOT have 'Overall Rating' card",
+      "result": "PASS",
+      "details": "Right panel shows 'Active Coachees' and 'Availability' cards - no rating card"
+    },
+    "coaches_page_sort": {
+      "test": "Coaches page sort button should say 'Sort by Slots' or 'Sort by Name'",
+      "result": "PASS",
+      "details": "Button shows 'Sort by Slots'"
+    },
+    "coach_cards_rating": {
+      "test": "Coach cards should NOT display star ratings",
+      "result": "PASS",
+      "details": "No star icons or rating numbers in coach cards"
+    },
+    "request_wizard_review": {
+      "test": "Request Wizard step 3 should NOT show rating next to coach location",
+      "result": "PASS",
+      "details": "Coach panel shows name, badge, location (Mumbai, India), about, expertise - no rating"
+    },
+    "admin_avg_rating": {
+      "test": "Admin Dashboard should show 'Avg Session Rating' stat",
+      "result": "PASS",
+      "details": "Stat card shows '4.7 Avg Session Rating' with star icon"
+    },
+    "admin_rating_distribution": {
+      "test": "Admin Dashboard should show 'Rating Distribution' chart",
+      "result": "PASS",
+      "details": "Bar chart visible showing 5 Star through 1 Star distribution"
+    }
+  }
+}

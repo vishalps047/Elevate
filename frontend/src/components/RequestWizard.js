@@ -187,7 +187,7 @@ export function ReviewRequest({ selectedCoach, goals, onSend, onBack }) {
           </Avatar>
           <h3 className="font-heading font-semibold text-foreground">{selectedCoach.name}</h3>
           <Badge variant="outline" className="text-xs mt-1 border-primary/40 text-primary">{selectedCoach.title}</Badge>
-          <p className="text-xs text-muted-foreground mt-1">★ {selectedCoach.rating} • {selectedCoach.location}</p>
+          <p className="text-xs text-muted-foreground mt-1">{selectedCoach.location}</p>
           <div className="mt-3">
             <p className="text-xs font-semibold text-muted-foreground mb-1">About</p>
             <p className="text-xs text-foreground/70 leading-relaxed">{selectedCoach.about}</p>
