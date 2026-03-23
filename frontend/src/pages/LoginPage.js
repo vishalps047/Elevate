@@ -2,56 +2,62 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from '../components/ui/button';
 import { Card, CardContent } from '../components/ui/card';
-import { Badge } from '../components/ui/badge';
+import { Input } from '../components/ui/input';
+import { Label } from '../components/ui/label';
 import { useApp } from '../context/AppContext';
-import { Target, Users, BarChart2, ChevronRight, Shield, TrendingUp, Award, Clock } from 'lucide-react';
+import { Shield, TrendingUp, Award, Users, ChevronRight, Lock, Mail, AlertCircle } from 'lucide-react';
+import { toast } from 'sonner';
 
 export default function LoginPage() {
-  const { setCurrentRole } = useApp();
+  const { login } = useApp();
   const navigate = useNavigate();
-  const [selectedRole, setSelectedRole] = useState(null);
-  const [hoveredRole, setHoveredRole] = useState(null);
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
 
-  const roles = [
-    {
-      id: 'coachee',
-      label: 'Coachee',
-      description: 'Browse coaches, request coaching, manage sessions and track your development journey.',
-      icon: Target,
-      color: 'text-primary',
-      bgColor: 'bg-primary-subtle',
-      badge: 'Employee',
-      features: ['Find & request coaches', 'Schedule sessions', 'Track progress', 'Submit feedback'],
-      defaultPath: '/'
-    },
-    {
-      id: 'coach',
-      label: 'Coach',
-      description: 'Manage coaching requests, conduct sessions, and support your coachees\'s growth.',
-      icon: Users,
-      color: 'text-accent',
-      bgColor: 'bg-accent-subtle',
-      badge: 'Certified Coach',
-      features: ['View & accept requests', 'Manage sessions', 'Track coachees', 'View ratings'],
-      defaultPath: '/coach-dashboard'
-    },
-    {
-      id: 'admin',
-      label: 'Admin',
-      description: 'Oversee the entire coaching program, manage coaches, and access analytics.',
-      icon: BarChart2,
-      color: 'text-warning',
-      bgColor: 'bg-yellow-50',
-      badge: 'Platform Admin',
-      features: ['Approve coaches', 'Monitor sessions', 'View analytics', 'Generate reports'],
-      defaultPath: '/admin-dashboard'
-    },
-  ];
-
-  const handleEnter = (role) => {
-    setCurrentRole(role.id);
-    navigate(role.defaultPath);
+  const handleLogin = async (e) => {
+    e.preventDefault();
+    setError('');
+    setLoading(true);
+    try {
+      const user = await login(email, password);
+      toast.success(`Welcome back, ${user.name}!`);
+      if (user.role === 'coach') navigate('/coach-dashboard');
+      else if (user.role === 'admin') navigate('/admin-dashboard');
+      else navigate('/');
+    } catch (err) {
+      setError(err.message || 'Invalid credentials');
+    } finally {
+      setLoading(false);
+    }
   };
+
+  const quickLogin = async (email) => {
+    setEmail(email);
+    setPassword('password123');
+    setError('');
+    setLoading(true);
+    try {
+      const user = await login(email, 'password123');
+      toast.success(`Welcome back, ${user.name}!`);
+      if (user.role === 'coach') navigate('/coach-dashboard');
+      else if (user.role === 'admin') navigate('/admin-dashboard');
+      else navigate('/');
+    } catch (err) {
+      setError(err.message || 'Login failed');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const demoAccounts = [
+    { label: 'Sarah (Coachee)', email: 'sarah@elevate.com', role: 'Coachee', color: 'text-primary', bg: 'bg-primary-subtle' },
+    { label: 'Alex (Coachee)', email: 'alex@elevate.com', role: 'Coachee', color: 'text-primary', bg: 'bg-primary-subtle' },
+    { label: 'Fatema (Coach)', email: 'fatema@elevate.com', role: 'Coach', color: 'text-accent', bg: 'bg-accent-subtle' },
+    { label: 'Vaishali (Coach)', email: 'vaishali@elevate.com', role: 'Coach', color: 'text-accent', bg: 'bg-accent-subtle' },
+    { label: 'Admin', email: 'admin@elevate.com', role: 'Admin', color: 'text-warning', bg: 'bg-yellow-50' },
+  ];
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
@@ -74,7 +80,6 @@ export default function LoginPage() {
               A structured coaching platform connecting employees with certified coaches for goal-oriented professional development.
             </p>
           </div>
-
           <div className="flex flex-wrap gap-4 mt-6">
             {[
               { icon: Users, label: '50+ Active Coaches' },
@@ -90,68 +95,97 @@ export default function LoginPage() {
         </div>
       </div>
 
-      {/* Role Selection */}
+      {/* Login Form */}
       <div className="flex-1 max-w-screen-lg mx-auto px-4 py-10 w-full">
-        <div className="text-center mb-8">
-          <h2 className="font-heading font-bold text-xl text-foreground">Choose your role to continue</h2>
-          <p className="text-muted-foreground text-sm mt-1">This is a demo — select any role to explore the platform</p>
-        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-3xl mx-auto">
+          {/* Login Card */}
+          <Card className="shadow-card">
+            <CardContent className="p-6">
+              <h2 className="font-heading font-bold text-lg text-foreground mb-1">Sign In</h2>
+              <p className="text-muted-foreground text-sm mb-6">Enter your credentials to access the platform</p>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {roles.map(role => {
-            const Icon = role.icon;
-            const isSelected = selectedRole === role.id;
-            const isHovered = hoveredRole === role.id;
-            return (
-              <Card
-                key={role.id}
-                className={`cursor-pointer transition-smooth overflow-hidden ${
-                  isSelected ? 'ring-2 ring-primary shadow-primary' : 'hover:shadow-md hover:ring-1 hover:ring-primary/30'
-                }`}
-                onClick={() => setSelectedRole(role.id)}
-                onMouseEnter={() => setHoveredRole(role.id)}
-                onMouseLeave={() => setHoveredRole(null)}
-              >
-                <div className="coach-banner opacity-90 relative">
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <Icon className="w-10 h-10 text-white/80" />
+              <form onSubmit={handleLogin} className="space-y-4">
+                <div>
+                  <Label htmlFor="email" className="text-sm font-medium">Email</Label>
+                  <div className="relative mt-1">
+                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                    <Input
+                      id="email"
+                      type="email"
+                      placeholder="your.email@elevate.com"
+                      className="pl-10"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      data-testid="login-email-input"
+                      required
+                    />
                   </div>
                 </div>
-                <CardContent className="p-5 flex flex-col">
-                  <div className="flex items-center justify-between mb-2">
-                    <h3 className="font-heading font-bold text-lg text-foreground">{role.label}</h3>
-                    <Badge variant="outline" className="text-xs border-border">{role.badge}</Badge>
+
+                <div>
+                  <Label htmlFor="password" className="text-sm font-medium">Password</Label>
+                  <div className="relative mt-1">
+                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                    <Input
+                      id="password"
+                      type="password"
+                      placeholder="Enter your password"
+                      className="pl-10"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      data-testid="login-password-input"
+                      required
+                    />
                   </div>
-                  <p className="text-sm text-muted-foreground leading-relaxed mb-4">{role.description}</p>
-                  <ul className="space-y-1.5 mb-5">
-                    {role.features.map(feat => (
-                      <li key={feat} className="flex items-center gap-2 text-sm text-foreground/80">
-                        <div className={`w-1.5 h-1.5 rounded-full ${role.bgColor} flex-shrink-0`} style={{ background: 'hsl(var(--primary))' }} />
-                        {feat}
-                      </li>
-                    ))}
-                  </ul>
-                  <div className="mt-auto">
-                    <Button
-                      className={`w-full ${
-                        isSelected
-                          ? 'bg-primary text-primary-foreground shadow-primary'
-                          : 'bg-primary/90 text-primary-foreground hover:bg-primary'
-                      }`}
-                      onClick={(e) => { e.stopPropagation(); handleEnter(role); }}
-                    >
-                      Enter as {role.label} <ChevronRight className="w-4 h-4 ml-2" />
-                    </Button>
+                </div>
+
+                {error && (
+                  <div className="flex items-center gap-2 text-destructive text-sm bg-destructive/10 rounded-lg p-2.5" data-testid="login-error">
+                    <AlertCircle className="w-4 h-4 flex-shrink-0" />
+                    {error}
                   </div>
-                </CardContent>
-              </Card>
-            );
-          })}
+                )}
+
+                <Button
+                  type="submit"
+                  className="w-full bg-primary hover:bg-primary/90 text-white"
+                  disabled={loading}
+                  data-testid="login-submit-btn"
+                >
+                  {loading ? 'Signing in...' : 'Sign In'}
+                  <ChevronRight className="w-4 h-4 ml-2" />
+                </Button>
+              </form>
+            </CardContent>
+          </Card>
+
+          {/* Quick Access */}
+          <div>
+            <h3 className="font-heading font-semibold text-sm text-foreground mb-3">Quick Demo Access</h3>
+            <p className="text-xs text-muted-foreground mb-4">Click any account below to sign in instantly. Password: <code className="bg-muted px-1.5 py-0.5 rounded text-xs">password123</code></p>
+            <div className="space-y-2">
+              {demoAccounts.map(acc => (
+                <button
+                  key={acc.email}
+                  onClick={() => quickLogin(acc.email)}
+                  disabled={loading}
+                  className="w-full flex items-center justify-between p-3 rounded-xl border border-border bg-card hover:bg-muted/50 transition-fast text-left"
+                  data-testid={`quick-login-${acc.email.split('@')[0]}`}
+                >
+                  <div>
+                    <p className="text-sm font-medium text-foreground">{acc.label}</p>
+                    <p className="text-xs text-muted-foreground">{acc.email}</p>
+                  </div>
+                  <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${acc.bg} ${acc.color}`}>{acc.role}</span>
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
 
         <p className="text-center text-xs text-muted-foreground mt-8">
           <Shield className="w-3.5 h-3.5 inline mr-1" />
-          This is a prototype demo. Role-based access control would be enforced in production.
+          This is a demo platform with pre-populated test accounts.
         </p>
       </div>
     </div>

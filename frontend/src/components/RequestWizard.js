@@ -1,235 +1,141 @@
-import { useState } from 'react';
-import { Check, ChevronRight, ChevronLeft, Send, User, Target, FileText, RotateCcw } from 'lucide-react';
-import { Button } from '../components/ui/button';
-import { Textarea } from '../components/ui/textarea';
-import { Label } from '../components/ui/label';
-import { Avatar, AvatarFallback, AvatarImage } from '../components/ui/avatar';
-import { Badge } from '../components/ui/badge';
-import { Card, CardContent } from '../components/ui/card';
-import { toast } from 'sonner';
+import { Button } from './ui/button';
+import { Card, CardContent } from './ui/card';
+import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
+import { MapPin, ArrowLeft, Send, Check, ChevronRight, Info } from 'lucide-react';
 
 const steps = [
-  { id: 1, label: 'Choose your Coach', icon: User },
-  { id: 2, label: 'Share your Goals', icon: Target },
-  { id: 3, label: 'Review and Submit Request', icon: FileText },
+  { num: 1, label: 'Choose Coaches' },
+  { num: 2, label: 'Share Goals' },
+  { num: 3, label: 'Review & Send' },
 ];
 
 export function RequestStepper({ currentStep }) {
   return (
-    <div className="bg-card rounded-xl border border-border p-4 mb-6 shadow-xs">
-      <div className="flex items-center">
-        {steps.map((step, idx) => {
-          const isCompleted = currentStep > step.id;
-          const isActive = currentStep === step.id;
-          const Icon = step.icon;
-          return (
-            <div key={step.id} className="flex items-center flex-1">
-              <div className="flex items-center gap-2.5">
-                <div className={`w-8 h-8 rounded-lg flex items-center justify-center transition-smooth ${
-                  isCompleted ? 'bg-accent text-white' :
-                  isActive ? 'bg-primary text-white shadow-primary' :
-                  'bg-muted text-muted-foreground'
-                }`}>
-                  {isCompleted ? <Check className="w-4 h-4" /> : <Icon className="w-4 h-4" />}
-                </div>
-                <div>
-                  <p className="text-xs text-muted-foreground">Step {step.id}</p>
-                  <p className={`text-xs font-medium ${
-                    isActive ? 'text-primary font-semibold' :
-                    isCompleted ? 'text-accent' :
-                    'text-muted-foreground'
-                  }`}>{step.label}</p>
-                </div>
-              </div>
-              {idx < steps.length - 1 && (
-                <div className="flex-1 mx-3">
-                  <div className="h-0.5 w-full rounded-full bg-muted overflow-hidden">
-                    <div
-                      className={`h-full rounded-full transition-smooth step-line-active`}
-                      style={{ width: currentStep > step.id ? '100%' : '0%' }}
-                    />
-                  </div>
-                </div>
-              )}
-            </div>
-          );
-        })}
-      </div>
+    <div className="flex items-center justify-center gap-2 mb-8">
+      {steps.map((step, i) => (
+        <div key={step.num} className="flex items-center gap-2">
+          <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium transition-smooth ${
+            currentStep === step.num ? 'bg-primary text-white shadow-sm' :
+            currentStep > step.num ? 'bg-primary-subtle text-primary' :
+            'bg-muted text-muted-foreground'
+          }`}>
+            {currentStep > step.num ? <Check className="w-3 h-3" /> : <span className="w-4 text-center">{step.num}</span>}
+            <span className="hidden sm:inline">{step.label}</span>
+          </div>
+          {i < steps.length - 1 && <div className={`w-8 h-0.5 rounded-full transition-smooth ${currentStep > step.num ? 'bg-primary' : 'bg-border'}`} />}
+        </div>
+      ))}
     </div>
   );
 }
 
 export function GoalsForm({ goals, onChange, onSubmit, onBack }) {
-  const [errors, setErrors] = useState({});
-
-  const validate = () => {
-    const errs = {};
-    if (!goals.mainGoals?.trim()) errs.mainGoals = 'This field is required';
-    if (!goals.challenges?.trim()) errs.challenges = 'This field is required';
-    return errs;
-  };
-
-  const handleSubmit = () => {
-    const errs = validate();
-    if (Object.keys(errs).length) { setErrors(errs); return; }
-    onSubmit();
-  };
+  const update = (field, value) => onChange({ ...goals, [field]: value });
+  const isValid = goals.mainGoals.trim().length > 0 && goals.challenges.trim().length > 0;
 
   return (
-    <div className="bg-card rounded-xl border border-border p-6 shadow-card animate-fade-in">
-      <h2 className="font-heading font-semibold text-lg text-foreground mb-6">Share Your Goals</h2>
+    <div className="max-w-2xl mx-auto animate-fade-in">
+      <Card className="shadow-card">
+        <CardContent className="p-6">
+          <h2 className="font-heading font-semibold text-lg text-foreground mb-1">Share Your Goals</h2>
+          <p className="text-sm text-muted-foreground mb-6">Help your coach understand what you want to achieve.</p>
 
-      <div className="space-y-5">
-        {/* Q1 */}
-        <div className="border border-border rounded-xl p-4">
-          <Label className="text-sm font-semibold text-foreground mb-2 block">
-            Q1. What are your main coaching goals? <span className="text-destructive">*</span>
-          </Label>
-          <Textarea
-            placeholder="Describe what you hope to achieve through coaching (e.g., improve leadership skills, enhance communication, career advancement...)"
-            className={`resize-none text-sm min-h-[80px] border-0 shadow-none focus-visible:ring-0 p-0 bg-transparent ${errors.mainGoals ? 'placeholder:text-destructive' : ''}`}
-            value={goals.mainGoals || ''}
-            onChange={(e) => { onChange({ ...goals, mainGoals: e.target.value }); setErrors(p => ({...p, mainGoals: null})); }}
-          />
-          {errors.mainGoals && <p className="text-xs text-destructive mt-1">{errors.mainGoals}</p>}
-        </div>
+          <div className="space-y-5">
+            <div>
+              <label className="text-sm font-semibold text-foreground mb-1.5 block">Mentorship Area <span className="text-destructive">*</span></label>
+              <input className="w-full rounded-xl border border-border bg-card px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30" placeholder="e.g., Leadership Development" value={goals.mentorshipArea} onChange={e => update('mentorshipArea', e.target.value)} data-testid="goals-mentorship" />
+            </div>
+            <div>
+              <label className="text-sm font-semibold text-foreground mb-1.5 block">Key Goals <span className="text-destructive">*</span></label>
+              <textarea className="w-full rounded-xl border border-border bg-card px-4 py-2.5 text-sm min-h-[80px] resize-none focus:outline-none focus:ring-2 focus:ring-primary/30" placeholder="What do you hope to achieve through coaching?" value={goals.mainGoals} onChange={e => update('mainGoals', e.target.value)} data-testid="goals-main" />
+            </div>
+            <div>
+              <label className="text-sm font-semibold text-foreground mb-1.5 block">Current Challenges <span className="text-destructive">*</span></label>
+              <textarea className="w-full rounded-xl border border-border bg-card px-4 py-2.5 text-sm min-h-[80px] resize-none focus:outline-none focus:ring-2 focus:ring-primary/30" placeholder="What challenges are you facing?" value={goals.challenges} onChange={e => update('challenges', e.target.value)} data-testid="goals-challenges" />
+            </div>
+            <div>
+              <label className="text-sm font-semibold text-foreground mb-1.5 block">Previous Coaching Experience</label>
+              <textarea className="w-full rounded-xl border border-border bg-card px-4 py-2.5 text-sm min-h-[60px] resize-none focus:outline-none focus:ring-2 focus:ring-primary/30" placeholder="Any prior coaching or mentoring experience? (Optional)" value={goals.previousExp} onChange={e => update('previousExp', e.target.value)} data-testid="goals-prev-exp" />
+            </div>
+            <div>
+              <label className="text-sm font-semibold text-foreground mb-1.5 block">Additional Notes</label>
+              <textarea className="w-full rounded-xl border border-border bg-card px-4 py-2.5 text-sm min-h-[60px] resize-none focus:outline-none focus:ring-2 focus:ring-primary/30" placeholder="Anything else you want your coach to know? (Optional)" value={goals.notes} onChange={e => update('notes', e.target.value)} data-testid="goals-notes" />
+            </div>
+          </div>
 
-        {/* Q2 */}
-        <div className="border border-border rounded-xl p-4">
-          <Label className="text-sm font-semibold text-foreground mb-2 block">
-            Q2. What are your current challenges? <span className="text-destructive">*</span>
-          </Label>
-          <Textarea
-            placeholder="Share specific challenges you're facing that coaching could help address (e.g., difficult team dynamics, presentation anxiety, strategic thinking...)"
-            className={`resize-none text-sm min-h-[80px] border-0 shadow-none focus-visible:ring-0 p-0 bg-transparent ${errors.challenges ? 'placeholder:text-destructive' : ''}`}
-            value={goals.challenges || ''}
-            onChange={(e) => { onChange({ ...goals, challenges: e.target.value }); setErrors(p => ({...p, challenges: null})); }}
-          />
-          {errors.challenges && <p className="text-xs text-destructive mt-1">{errors.challenges}</p>}
-        </div>
-
-        {/* Q3 */}
-        <div className="border border-border rounded-xl p-4">
-          <Label className="text-sm font-semibold text-foreground mb-2 block">
-            Q3. Previous coaching or training experience. (If any)
-          </Label>
-          <Textarea
-            placeholder="Describe any previous coaching, training, or development programs you've participated in"
-            className="resize-none text-sm min-h-[80px] border-0 shadow-none focus-visible:ring-0 p-0 bg-transparent"
-            value={goals.previousExp || ''}
-            onChange={(e) => onChange({ ...goals, previousExp: e.target.value })}
-          />
-        </div>
-
-        {/* Additional notes */}
-        <div className="border border-border rounded-xl p-4">
-          <Label className="text-sm font-semibold text-foreground mb-2 block">
-            Additional notes (optional)
-          </Label>
-          <Textarea
-            placeholder="Any additional information that would help your coach understand your needs better"
-            className="resize-none text-sm min-h-[80px] border-0 shadow-none focus-visible:ring-0 p-0 bg-transparent"
-            value={goals.notes || ''}
-            onChange={(e) => onChange({ ...goals, notes: e.target.value })}
-          />
-        </div>
-      </div>
-
-      <div className="flex justify-end gap-3 mt-6">
-        <Button variant="outline" onClick={onBack}>
-          <ChevronLeft className="w-4 h-4 mr-1" /> Go Back
-        </Button>
-        <Button
-          className="bg-primary-light hover:bg-primary text-white px-6"
-          onClick={handleSubmit}
-        >
-          Submit & Continue <ChevronRight className="w-4 h-4 ml-1" />
-        </Button>
-      </div>
+          <div className="flex justify-between mt-6">
+            <Button variant="outline" onClick={onBack}><ArrowLeft className="w-4 h-4 mr-2" /> Back</Button>
+            <Button className="bg-primary text-white hover:bg-primary/90" disabled={!isValid} onClick={onSubmit} data-testid="goals-next-btn">
+              Review & Send <ChevronRight className="w-4 h-4 ml-2" />
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }
 
-export function ReviewRequest({ selectedCoach, goals, onSend, onBack }) {
-  const [sending, setSending] = useState(false);
-
-  const handleSend = () => {
-    setSending(true);
-    setTimeout(() => {
-      onSend();
-      toast.success('Coaching request sent successfully!', {
-        description: `Your request has been sent to ${selectedCoach.name}. You'll be notified when they respond.`
-      });
-    }, 1200);
-  };
-
-  const GoalBox = ({ question, answer }) => (
-    <div className="border border-border rounded-xl p-4">
-      <p className="text-xs font-medium text-muted-foreground mb-2">{question}</p>
-      <p className="text-sm text-primary font-medium">{answer || <span className="text-muted-foreground italic">Not provided</span>}</p>
-    </div>
-  );
-
+export function ReviewRequest({ selectedPreferences, goals, onSend, onBack, sending }) {
   return (
-    <div className="animate-fade-in">
-      <div className="mb-4">
-        <h2 className="font-heading font-semibold text-lg text-foreground">Review and Send Request</h2>
-        <p className="text-sm text-muted-foreground mt-1">Please review your coaching request before sending</p>
-      </div>
+    <div className="max-w-2xl mx-auto animate-fade-in">
+      <Card className="shadow-card">
+        <CardContent className="p-6">
+          <h2 className="font-heading font-semibold text-lg text-foreground mb-5">Review Your Request</h2>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        {/* Coach Panel */}
-        <div className="bg-card border border-border rounded-xl p-5 shadow-card">
-          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-4">Coach Selected</p>
-          <Avatar className="w-14 h-14 mb-3 ring-2 ring-primary/30">
-            <AvatarImage src={selectedCoach.avatar} />
-            <AvatarFallback>{selectedCoach.name.split(' ').map(n=>n[0]).join('')}</AvatarFallback>
-          </Avatar>
-          <h3 className="font-heading font-semibold text-foreground">{selectedCoach.name}</h3>
-          <Badge variant="outline" className="text-xs mt-1 border-primary/40 text-primary">{selectedCoach.title}</Badge>
-          <p className="text-xs text-muted-foreground mt-1">{selectedCoach.location}</p>
-          <div className="mt-3">
-            <p className="text-xs font-semibold text-muted-foreground mb-1">About</p>
-            <p className="text-xs text-foreground/70 leading-relaxed">{selectedCoach.about}</p>
-          </div>
-          <div className="mt-3">
-            <p className="text-xs font-semibold text-muted-foreground mb-2">Area of Expertise</p>
-            <div className="flex flex-wrap gap-1.5">
-              {selectedCoach.expertise.slice(0, 3).map(e => (
-                <span key={e} className="expertise-tag">{e}</span>
+          {/* Coach Preferences */}
+          <div className="mb-6">
+            <h3 className="text-sm font-semibold text-foreground mb-3">Coach Preferences (in order)</h3>
+            <div className="space-y-2">
+              {selectedPreferences.map((coach, i) => (
+                <div key={coach.id} className="flex items-center gap-3 bg-muted/50 rounded-xl p-3 border border-border" data-testid={`review-pref-${i+1}`}>
+                  <span className="w-6 h-6 rounded-full bg-primary text-white text-xs flex items-center justify-center font-bold">{i + 1}</span>
+                  <Avatar className="w-9 h-9">
+                    <AvatarImage src={coach.avatar} />
+                    <AvatarFallback className="bg-primary-light text-white text-xs">{coach.name?.split(' ').map(n => n[0]).join('')}</AvatarFallback>
+                  </Avatar>
+                  <div className="flex-1">
+                    <p className="text-sm font-semibold text-foreground">{coach.name}</p>
+                    <p className="text-xs text-muted-foreground flex items-center gap-1"><MapPin className="w-3 h-3" /> {coach.location}</p>
+                  </div>
+                  {i === 0 && <span className="text-xs px-2 py-0.5 rounded-full bg-primary-subtle text-primary font-medium">First Choice</span>}
+                </div>
               ))}
             </div>
           </div>
-        </div>
 
-        {/* Goals Panel */}
-        <div className="lg:col-span-2 bg-card border border-border rounded-xl p-5 shadow-card">
-          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-4">Your Goals</p>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <GoalBox question="Q1. What are your main coaching goals? *" answer={goals.mainGoals} />
-            <GoalBox question="Q2. What are your current challenges?" answer={goals.challenges} />
-            <GoalBox question="Q3. Previous coaching or training experience. (If any)" answer={goals.previousExp} />
-            <GoalBox question="Additional notes (optional)" answer={goals.notes} />
+          {/* Goals Summary */}
+          <div className="border-t border-border pt-4 mb-6 space-y-3">
+            <h3 className="text-sm font-semibold text-foreground">Goals Summary</h3>
+            {[
+              { label: 'Mentorship Area', value: goals.mentorshipArea },
+              { label: 'Key Goals', value: goals.mainGoals },
+              { label: 'Challenges', value: goals.challenges },
+              { label: 'Previous Experience', value: goals.previousExp },
+              { label: 'Notes', value: goals.notes },
+            ].filter(r => r.value).map(row => (
+              <div key={row.label} className="bg-muted/30 rounded-lg p-3">
+                <p className="text-xs font-semibold text-foreground/70 mb-0.5">{row.label}</p>
+                <p className="text-sm text-foreground">{row.value}</p>
+              </div>
+            ))}
           </div>
-        </div>
-      </div>
 
-      <div className="flex justify-end gap-3 mt-5">
-        <Button variant="outline" onClick={onBack}>
-          <ChevronLeft className="w-4 h-4 mr-1" /> Edit Details
-        </Button>
-        <Button
-          className="bg-primary hover:bg-primary/90 text-white px-6 shadow-primary"
-          onClick={handleSend}
-          disabled={sending}
-        >
-          {sending ? (
-            <><RotateCcw className="w-4 h-4 mr-2 animate-spin" /> Sending...</>
-          ) : (
-            <><Send className="w-4 h-4 mr-2" /> Send Coaching Request →</>
-          )}
-        </Button>
-      </div>
+          {/* Info */}
+          <div className="bg-accent-subtle border border-accent/30 rounded-xl p-3 flex items-start gap-2 mb-6">
+            <Info className="w-4 h-4 text-accent flex-shrink-0 mt-0.5" />
+            <p className="text-xs text-foreground/80">
+              Your request will first go to your <strong>1st preference</strong> coach. If they decline, it will automatically cascade to the next preference.
+            </p>
+          </div>
+
+          <div className="flex justify-between">
+            <Button variant="outline" onClick={onBack}><ArrowLeft className="w-4 h-4 mr-2" /> Back</Button>
+            <Button className="bg-primary hover:bg-primary/90 text-white" onClick={onSend} disabled={sending} data-testid="send-request-btn">
+              {sending ? 'Sending...' : <><Send className="w-4 h-4 mr-2" /> Send Request</>}
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }

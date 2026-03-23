@@ -1,98 +1,89 @@
-import { createContext, useContext, useState, useEffect } from 'react';
-import {
-  mockCoacheeNotifications,
-  mockCoachNotifications,
-  mockAdminNotifications,
-  mockUsers
-} from '../data/mockData';
+import { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import { api } from '../services/api';
 
 const AppContext = createContext();
 
-const STORAGE_KEY = 'elevate_notifications';
-
-// Load from localStorage on startup, fallback to mock data
-function loadNotifications() {
-  try {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    if (stored) {
-      const parsed = JSON.parse(stored);
-      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
-    }
-  } catch (e) { /* ignore */ }
-  // First load — seed with mock data
-  return [
-    ...mockCoacheeNotifications,
-    ...mockCoachNotifications,
-    ...mockAdminNotifications,
-  ];
-}
-
 export const AppProvider = ({ children }) => {
-  const [currentRole, setCurrentRole] = useState('coachee');
+  const [user, setUser] = useState(null);
+  const [token, setToken] = useState(localStorage.getItem('elevate_token'));
+  const [loading, setLoading] = useState(true);
+  const [notifications, setNotifications] = useState([]);
 
-  // ── Single flat store: all notifications for all roles ────────────────────
-  // Each notification has a `role` field: 'coachee' | 'coach' | 'admin'
-  // localStorage ensures notifications survive React Router navigations.
-  const [allNotifications, setAllNotifications] = useState(loadNotifications);
-
-  // Sync to localStorage on every change
   useEffect(() => {
+    if (token) {
+      api.setToken(token);
+      api.getMe()
+        .then(u => { setUser(u); setLoading(false); })
+        .catch(() => {
+          setToken(null);
+          api.setToken(null);
+          setLoading(false);
+        });
+    } else {
+      setLoading(false);
+    }
+  }, [token]);
+
+  const fetchNotifications = useCallback(async () => {
+    if (!token) return;
     try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(allNotifications));
-    } catch (e) { /* ignore */ }
-  }, [allNotifications]);
+      const notifs = await api.getNotifications();
+      setNotifications(notifs);
+    } catch (e) { /* silent */ }
+  }, [token]);
 
-  const currentUser = mockUsers[currentRole] || mockUsers.coachee;
+  useEffect(() => {
+    if (token && user) {
+      fetchNotifications();
+      const interval = setInterval(fetchNotifications, 15000);
+      return () => clearInterval(interval);
+    }
+  }, [token, user, fetchNotifications]);
 
-  // ── Return only notifications for the currently active role ──────────────
-  const getNotifications = () =>
-    allNotifications.filter(n => n.role === currentRole);
-
-  // ── Unread count for the current role ────────────────────────────────────
-  const unreadCount = () =>
-    allNotifications.filter(n => n.role === currentRole && !n.read).length;
-
-  // ── Mark all read for the current role ───────────────────────────────────
-  const markAllRead = () => {
-    setAllNotifications(prev =>
-      prev.map(n => n.role === currentRole ? { ...n, read: true } : n)
-    );
+  const login = async (email, password) => {
+    const result = await api.login(email, password);
+    api.setToken(result.token);
+    setToken(result.token);
+    setUser(result.user);
+    return result.user;
   };
 
-  // ── Mark single notification as read ─────────────────────────────────────
-  const markRead = (id) => {
-    setAllNotifications(prev =>
-      prev.map(n => n.id === id ? { ...n, read: true } : n)
-    );
+  const logout = () => {
+    api.setToken(null);
+    setToken(null);
+    setUser(null);
+    setNotifications([]);
+    localStorage.removeItem('elevate_token');
   };
 
-  // ── Add notification to ANY role's inbox (one setState call) ──────────────
-  // targetRole: 'coachee' | 'coach' | 'admin'
-  const addNotificationToRole = (targetRole, notif) => {
-    const newNotif = {
-      id: `n${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
-      ...notif,
-      role: targetRole,
-      time: 'just now',
-      read: false,
-    };
-    setAllNotifications(prev => [newNotif, ...prev]);
+  const unreadCount = notifications.filter(n => !n.read).length;
+
+  const markAllRead = async () => {
+    try {
+      await api.markAllRead();
+      setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+    } catch (e) { /* silent */ }
   };
 
-  // ── Add to current role's own inbox ──────────────────────────────────────
-  const addNotification = (notif) => addNotificationToRole(currentRole, notif);
+  const markRead = async (id) => {
+    try {
+      await api.markRead(id);
+      setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
+    } catch (e) { /* silent */ }
+  };
 
   return (
     <AppContext.Provider value={{
-      currentRole,
-      setCurrentRole,
-      currentUser,
-      getNotifications,
+      user,
+      isAuthenticated: !!token && !!user,
+      loading,
+      login,
+      logout,
+      notifications,
       unreadCount,
       markAllRead,
       markRead,
-      addNotification,
-      addNotificationToRole,
+      fetchNotifications,
     }}>
       {children}
     </AppContext.Provider>

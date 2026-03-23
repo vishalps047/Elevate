@@ -4,7 +4,11 @@ import { Checkbox } from '../components/ui/checkbox';
 import { Label } from '../components/ui/label';
 import { Button } from '../components/ui/button';
 import { Separator } from '../components/ui/separator';
-import { expertiseOptions } from '../data/mockData';
+const expertiseOptions = [
+  'Executive Presence', 'Leadership Development', 'Change Management', 'Risk Assessment',
+  'Stakeholder Engagement', 'Process Improvement', 'Project Planning', 'Performance Metrics',
+  'Team Communication', 'Feedback Mechanisms', 'Public Speaking',
+];
 
 export default function CoachFilters({ selectedExpertise, onExpertiseChange }) {
   const [selectAll, setSelectAll] = useState(true);

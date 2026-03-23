@@ -1,362 +1,282 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext';
+import { api } from '../services/api';
 import { Button } from '../components/ui/button';
-import { Badge } from '../components/ui/badge';
 import { Card, CardContent } from '../components/ui/card';
+import { Badge } from '../components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '../components/ui/avatar';
-import { Progress } from '../components/ui/progress';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../components/ui/dialog';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
+import {
+  Users, Calendar, TrendingUp, ChevronRight, CheckCircle,
+  Clock, Target, XCircle, MessageSquare, BookOpen, ArrowRight
+} from 'lucide-react';
 import { SessionCard, ScheduleModal, RescheduleModal } from '../components/SessionComponents';
 import { toast } from 'sonner';
 import {
-  Users, Calendar, TrendingUp, ChevronRight, CheckCircle,
-  XCircle, Clock, Eye, BarChart2, Award, AlertTriangle, Info
-} from 'lucide-react';
-import { mockRequests, mockCoachSessions } from '../data/mockData';
+  Dialog, DialogContent, DialogHeader, DialogTitle
+} from '../components/ui/dialog';
 
-function AcceptRequestModal({ open, onClose, request, onAccept, onDecline }) {
-  const [action, setAction] = useState(null);
-  const [processing, setProcessing] = useState(false);
-
-  const handleAccept = () => {
-    setProcessing(true);
-    setTimeout(() => {
-      onAccept(request.id);
-      toast.success(`Request from ${request.coacheeName} accepted!`, {
-        description: 'They can now schedule sessions with you.'
-      });
-      onClose();
-      setProcessing(false);
-    }, 1000);
+function StatCard({ icon: Icon, value, label, sub, color = 'primary' }) {
+  const colorMap = {
+    primary: 'bg-primary-subtle text-primary',
+    accent: 'bg-accent-subtle text-accent',
+    warning: 'bg-yellow-50 text-warning',
+    success: 'bg-green-50 text-success',
   };
-
-  const handleDecline = () => {
-    setProcessing(true);
-    setTimeout(() => {
-      onDecline(request.id);
-      toast.info(`Request from ${request.coacheeName} declined.`);
-      onClose();
-      setProcessing(false);
-    }, 800);
-  };
-
-  if (!request) return null;
-
   return (
-    <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle className="font-heading flex items-center gap-2">
-            <div className="w-8 h-8 bg-primary-subtle rounded-lg flex items-center justify-center">
-              <Users className="w-4 h-4 text-primary" />
-            </div>
-            Accept Coaching Request
-          </DialogTitle>
-        </DialogHeader>
-
-        {/* Coachee Info */}
-        <div className="flex items-center gap-3 p-3 border border-border rounded-xl">
-          <Avatar className="w-12 h-12">
-            <AvatarImage src={request.coacheeAvatar} />
-            <AvatarFallback>{request.coacheeName.split(' ').map(n=>n[0]).join('')}</AvatarFallback>
-          </Avatar>
-          <div className="flex-1">
-            <div className="flex items-center gap-2">
-              <span className="font-heading font-semibold text-foreground">{request.coacheeName}</span>
-              <Badge variant="outline" className="text-xs border-border">{request.coacheeRole}</Badge>
-            </div>
-            <p className="text-xs text-muted-foreground mt-0.5">Mentorship required on: <span className="font-medium text-foreground">{request.mentorshipArea}</span></p>
+    <Card className="shadow-card">
+      <CardContent className="p-5">
+        <div className="flex items-start justify-between">
+          <div>
+            <p className="text-2xl font-heading font-bold text-foreground">{value}</p>
+            <p className="text-sm font-medium text-foreground/80 mt-0.5">{label}</p>
+            {sub && <p className="text-xs text-muted-foreground mt-1">{sub}</p>}
           </div>
-          <Button variant="outline" size="sm" className="text-xs h-8">
-            <Eye className="w-3.5 h-3.5 mr-1" /> View Profile
-          </Button>
-        </div>
-
-        {/* Goals */}
-        <div>
-          <p className="text-sm font-semibold text-foreground mb-3">Coaching Goals & Preferences</p>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            {[
-              { q: 'Q1. What are your main coaching goals? *', a: request.goals },
-              { q: 'Q2. What are your current challenges?', a: request.challenges },
-              { q: 'Q3. Previous coaching or training experience. (If any)', a: request.previousExperience },
-              { q: 'Additional notes (optional)', a: request.notes || 'None' },
-            ].map(({ q, a }) => (
-              <div key={q} className="border border-border rounded-xl p-3">
-                <p className="text-xs text-muted-foreground mb-1.5">{q}</p>
-                <p className="text-sm text-primary font-medium">{a || <span className="text-muted-foreground italic">Not provided</span>}</p>
-              </div>
-            ))}
+          <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${colorMap[color]}`}>
+            <Icon className="w-5 h-5" />
           </div>
         </div>
-
-        {/* What happens next */}
-        <div className="bg-accent-subtle border border-accent/30 rounded-xl p-4">
-          <div className="flex items-center gap-2 mb-2">
-            <Info className="w-4 h-4 text-accent" />
-            <p className="text-sm font-semibold text-foreground">What happens next?</p>
-          </div>
-          <ul className="space-y-1.5">
-            {[
-              `Confirmation email sent to ${request.coacheeName}`,
-              'Elevate management team will be notified of your acceptance',
-              'Coachee can now schedule sessions with you',
-              'Your capacity will be updated automatically',
-            ].map((item, i) => (
-              <li key={i} className="flex items-start gap-2 text-xs text-foreground/80">
-                <span className="mt-0.5">•</span>{item}
-              </li>
-            ))}
-          </ul>
-        </div>
-
-        {/* Actions */}
-        <div className="flex justify-end gap-3">
-          <Button variant="outline" onClick={handleDecline} disabled={processing} className="gap-2">
-            <XCircle className="w-4 h-4 text-destructive" /> Decline
-          </Button>
-          <Button
-            className="bg-accent hover:bg-accent/90 text-white gap-2"
-            onClick={handleAccept}
-            disabled={processing}
-          >
-            {processing ? 'Processing...' : <><CheckCircle className="w-4 h-4" /> Accept Request</>}
-          </Button>
-        </div>
-      </DialogContent>
-    </Dialog>
+      </CardContent>
+    </Card>
   );
 }
 
 export default function CoachDashboard() {
-  const { setCurrentRole, addNotificationToRole } = useApp();
-  // Always use the coach mock user on this page
-  const currentUser = { id: 'c1', name: 'Fatema Hunaid', title: 'Executive Coach', avatar: 'https://randomuser.me/api/portraits/women/44.jpg', coacheesEnrolled: 1, totalCapacity: 2, overallRating: 4.8, totalSessions: 24 };
-  const [requests, setRequests] = useState(mockRequests);
-  const [sessions, setSessions] = useState(mockCoachSessions);
-  const [selectedRequest, setSelectedRequest] = useState(null);
-  // Coach uses RescheduleModal, not ScheduleModal, for existing sessions
+  const { user, fetchNotifications } = useApp();
+  const [requests, setRequests] = useState([]);
+  const [sessions, setSessions] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [actionModal, setActionModal] = useState({ open: false, request: null, action: null });
+  const [processing, setProcessing] = useState(false);
+  const [scheduleModal, setScheduleModal] = useState({ open: false, request: null });
   const [rescheduleModal, setRescheduleModal] = useState({ open: false, session: null });
 
-  const pendingRequests = requests.filter(r => r.status === 'pending');
-  const acceptedRequests = requests.filter(r => r.status === 'accepted');
-  const declinedRequests = requests.filter(r => r.status === 'declined');
-
-  const handleAccept = (id) => {
-    setRequests(prev => prev.map(r => r.id === id ? { ...r, status: 'accepted' } : r));
-    // Notify coachee their request was accepted
-    addNotificationToRole('coachee', {
-      type: 'system',
-      title: 'Request Accepted!',
-      message: 'Fatema Hunaid has accepted your coaching request. You can now schedule your first session.',
-      avatar: 'https://randomuser.me/api/portraits/women/44.jpg',
-    });
-    // Notify admin
-    addNotificationToRole('admin', {
-      type: 'system',
-      title: 'Request Accepted',
-      message: 'Fatema Hunaid accepted a coaching request. A new coaching program is now active.',
-      avatar: 'https://randomuser.me/api/portraits/women/44.jpg',
-    });
-  };
-  const handleDecline = (id) => {
-    setRequests(prev => prev.map(r => r.id === id ? { ...r, status: 'declined' } : r));
-    // Notify coachee their request was declined
-    addNotificationToRole('coachee', {
-      type: 'system',
-      title: 'Request Declined',
-      message: 'Fatema Hunaid has declined your coaching request. Please browse other available coaches.',
-      avatar: 'https://randomuser.me/api/portraits/women/44.jpg',
-    });
-    addNotificationToRole('admin', {
-      type: 'system',
-      title: 'Request Declined',
-      message: 'Fatema Hunaid declined a coaching request.',
-      avatar: 'https://randomuser.me/api/portraits/women/44.jpg',
-    });
+  const loadData = async () => {
+    try {
+      const [reqRes, sessRes] = await Promise.all([api.getRequests(), api.getSessions()]);
+      setRequests(reqRes);
+      setSessions(sessRes);
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleRescheduleConfirm = (slot, session) => {
-    setSessions(prev => prev.map(s =>
-      s.id === session.id ? { ...s, date: slot.date, time: slot.time } : s
-    ));
+  useEffect(() => { loadData(); }, []);
+
+  // Filter requests: pending ones assigned to this coach
+  const pendingRequests = requests.filter(r => {
+    if (r.status !== 'pending') return false;
+    const idx = r.current_preference_index;
+    const pref = r.preferences?.[idx];
+    return pref?.coach_id === user?.id && pref?.status === 'pending';
+  });
+
+  // Active coaching journeys (accepted by this coach)
+  const activeJourneys = requests.filter(r => r.status === 'accepted' && r.active_coach_id === user?.id);
+
+  const upcomingSessions = sessions.filter(s => s.status === 'upcoming');
+  const completedSessions = sessions.filter(s => s.status === 'completed');
+
+  const handleAccept = async () => {
+    if (!actionModal.request) return;
+    setProcessing(true);
+    try {
+      await api.acceptRequest(actionModal.request.id);
+      toast.success(`You accepted ${actionModal.request.coachee_name}'s coaching request!`);
+      setActionModal({ open: false, request: null, action: null });
+      await loadData();
+      fetchNotifications();
+    } catch (e) {
+      toast.error(e.message);
+    } finally {
+      setProcessing(false);
+    }
   };
+
+  const handleDecline = async () => {
+    if (!actionModal.request) return;
+    setProcessing(true);
+    try {
+      await api.declineRequest(actionModal.request.id);
+      toast.info(`Request declined. The coachee will be notified.`);
+      setActionModal({ open: false, request: null, action: null });
+      await loadData();
+      fetchNotifications();
+    } catch (e) {
+      toast.error(e.message);
+    } finally {
+      setProcessing(false);
+    }
+  };
+
+  const handleScheduleConfirm = async (slot) => {
+    try {
+      await api.createSession({ request_id: scheduleModal.request.id, date: slot.date, time: slot.time });
+      toast.success('Session scheduled!');
+      setScheduleModal({ open: false, request: null });
+      await loadData();
+      fetchNotifications();
+    } catch (e) {
+      toast.error(e.message);
+    }
+  };
+
+  const handleRescheduleConfirm = async (slot, session) => {
+    try {
+      await api.rescheduleSession(session.id, { date: slot.date, time: slot.time });
+      toast.success('Session rescheduled!');
+      setRescheduleModal({ open: false, session: null });
+      await loadData();
+      fetchNotifications();
+    } catch (e) {
+      toast.error(e.message);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full" />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Header Banner */}
+      {/* Header */}
       <div className="bg-gradient-primary px-6 lg:px-10 py-6">
         <div className="max-w-screen-xl mx-auto">
-          <h1 className="text-2xl font-heading font-bold text-white mb-4">Coach Dashboard</h1>
-          <div className="flex flex-col sm:flex-row gap-4">
-            {/* Coach Info Card */}
-            <div className="bg-white/15 backdrop-blur-sm rounded-xl p-4 flex items-center gap-4 flex-1">
-              <Avatar className="w-14 h-14" style={{ border: '3px solid rgba(255,255,255,0.4)' }}>
-                <AvatarImage src={currentUser?.avatar} />
-                <AvatarFallback className="bg-white/20 text-white">{currentUser?.name?.split(' ').map(n=>n[0]).join('')}</AvatarFallback>
-              </Avatar>
-              <div>
-                <h3 className="font-heading font-semibold text-white">{currentUser?.name}</h3>
-                <p className="text-white/70 text-xs">{currentUser?.title}</p>
-              </div>
+          <div className="flex items-center gap-4">
+            <Avatar className="w-14 h-14 border-3 border-white/30">
+              <AvatarImage src={user?.avatar} />
+              <AvatarFallback className="bg-primary-light text-white">{user?.name?.split(' ').map(n => n[0]).join('')}</AvatarFallback>
+            </Avatar>
+            <div>
+              <h3 className="font-heading font-semibold text-white" data-testid="coach-welcome">{user?.name}</h3>
+              <p className="text-white/70 text-xs">{user?.title}</p>
             </div>
-            {/* Stats */}
-            {[
-              { label: 'Coachees Enrolled', value: currentUser?.coacheesEnrolled || 1, icon: Users },
-              { label: 'Sessions Conducted', value: currentUser?.totalSessions || 24, icon: Calendar },
-              { label: 'Pending Requests', value: pendingRequests.length, icon: Clock },
-              { label: 'Capacity Used', value: `${currentUser?.coacheesEnrolled || 1}/${currentUser?.totalCapacity || 2}`, icon: BarChart2 },
-            ].map(stat => (
-              <div key={stat.label} className="bg-white/15 backdrop-blur-sm rounded-xl p-4 flex-1 min-w-[120px]">
-                <div className="flex items-center justify-between mb-2">
-                  <stat.icon className="w-5 h-5 text-white/70" />
-                </div>
-                <p className="text-2xl font-heading font-bold text-white">{stat.value}</p>
-                <p className="text-white/70 text-xs mt-0.5">{stat.label}</p>
-              </div>
-            ))}
           </div>
         </div>
       </div>
 
       <div className="max-w-screen-xl mx-auto px-4 lg:px-8 py-6">
+        {/* Stats */}
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+          <StatCard icon={MessageSquare} value={pendingRequests.length} label="Pending Requests" color="warning" />
+          <StatCard icon={Users} value={activeJourneys.length} label="Active Coachees" color="primary" />
+          <StatCard icon={Calendar} value={upcomingSessions.length} label="Upcoming Sessions" color="accent" />
+          <StatCard icon={TrendingUp} value={completedSessions.length} label="Completed Sessions" color="success" />
+        </div>
+
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Pending Requests */}
-          <div className="lg:col-span-2">
-            <Tabs defaultValue="pending">
-              <div className="flex items-center justify-between mb-3">
-                <TabsList className="bg-card border border-border">
-                  <TabsTrigger value="pending" className="data-[state=active]:bg-primary data-[state=active]:text-white">
-                    <div className="flex items-center gap-1.5">
-                      <span className="w-2 h-2 rounded-full bg-destructive"></span>
-                      Pending ({pendingRequests.length})
-                    </div>
-                  </TabsTrigger>
-                  <TabsTrigger value="accepted" className="data-[state=active]:bg-primary data-[state=active]:text-white">
-                    Accepted ({acceptedRequests.length})
-                  </TabsTrigger>
-                  <TabsTrigger value="all" className="data-[state=active]:bg-primary data-[state=active]:text-white">
-                    All Requests
-                  </TabsTrigger>
-                </TabsList>
-              </div>
-
-              <TabsContent value="pending">
-                <div className="space-y-3">
-                  {pendingRequests.length === 0 ? (
-                    <div className="text-center py-12 bg-card rounded-xl border border-border">
-                      <CheckCircle className="w-10 h-10 text-muted-foreground mx-auto mb-2 opacity-40" />
-                      <p className="text-sm text-muted-foreground">No pending requests</p>
-                    </div>
-                  ) : pendingRequests.map(req => (
-                    <RequestCard
-                      key={req.id}
-                      request={req}
-                      onViewDetails={() => setSelectedRequest(req)}
-                    />
-                  ))}
+          <div className="lg:col-span-2 space-y-6">
+            {/* Pending Requests */}
+            <Card className="shadow-card" data-testid="pending-requests-section">
+              <CardContent className="p-5">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="font-heading font-semibold text-foreground">Pending Requests</h3>
+                  {pendingRequests.length > 0 && <Badge className="bg-warning/10 text-warning border-0">{pendingRequests.length} new</Badge>}
                 </div>
-              </TabsContent>
-
-              <TabsContent value="accepted">
-                <div className="space-y-3">
-                  {acceptedRequests.length === 0 ? (
-                    <div className="text-center py-12 bg-card rounded-xl border border-border">
-                      <p className="text-sm text-muted-foreground">No accepted requests yet</p>
-                    </div>
-                  ) : acceptedRequests.map(req => (
-                    <RequestCard key={req.id} request={req} showActions={false} />
-                  ))}
-                </div>
-              </TabsContent>
-
-              <TabsContent value="all">
-                <div className="space-y-3">
-                  {requests.map(req => (
-                    <RequestCard
-                      key={req.id}
-                      request={req}
-                      onViewDetails={req.status === 'pending' ? () => setSelectedRequest(req) : undefined}
-                      showStatus
-                    />
-                  ))}
-                </div>
-              </TabsContent>
-            </Tabs>
+                {pendingRequests.length === 0 ? (
+                  <div className="text-center py-8">
+                    <MessageSquare className="w-10 h-10 text-muted-foreground mx-auto mb-2 opacity-40" />
+                    <p className="text-sm text-muted-foreground">No pending requests</p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {pendingRequests.map(req => (
+                      <div key={req.id} className="flex items-center gap-3 bg-muted/50 rounded-xl p-4 border border-border" data-testid={`request-${req.id}`}>
+                        <Avatar className="w-10 h-10">
+                          <AvatarImage src={req.coachee_avatar} />
+                          <AvatarFallback>{req.coachee_name?.[0]}</AvatarFallback>
+                        </Avatar>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-semibold text-foreground">{req.coachee_name}</p>
+                          <p className="text-xs text-muted-foreground">{req.coachee_role} · {req.mentorship_area}</p>
+                          <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1">{req.goals}</p>
+                        </div>
+                        <div className="flex gap-2 flex-shrink-0">
+                          <Button size="sm" className="bg-primary text-white text-xs h-8" onClick={() => setActionModal({ open: true, request: req, action: 'accept' })} data-testid={`accept-btn-${req.id}`}>
+                            <CheckCircle className="w-3.5 h-3.5 mr-1" /> Accept
+                          </Button>
+                          <Button size="sm" variant="outline" className="text-xs h-8 text-destructive border-destructive/30" onClick={() => setActionModal({ open: true, request: req, action: 'decline' })} data-testid={`decline-btn-${req.id}`}>
+                            <XCircle className="w-3.5 h-3.5 mr-1" /> Decline
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
 
             {/* Upcoming Sessions */}
-            <div className="mt-6">
-              <div className="flex items-center justify-between mb-3">
-                <h3 className="font-heading font-semibold text-foreground">Upcoming Sessions</h3>
-                <Button variant="ghost" size="sm" className="text-xs text-primary h-7">
-                  View All <ChevronRight className="w-3.5 h-3.5 ml-1" />
-                </Button>
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                {sessions.map(s => (
-                  <SessionCard
-                    key={s.id}
-                    session={s}
-                    role="coach"
-                    onReschedule={(s) => setRescheduleModal({ open: true, session: s })}
-                  />
-                ))}
-              </div>
-            </div>
+            <Card className="shadow-card">
+              <CardContent className="p-5">
+                <h3 className="font-heading font-semibold text-foreground mb-4">Upcoming Sessions</h3>
+                {upcomingSessions.length === 0 ? (
+                  <div className="text-center py-8">
+                    <Calendar className="w-10 h-10 text-muted-foreground mx-auto mb-2 opacity-40" />
+                    <p className="text-sm text-muted-foreground">No upcoming sessions</p>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {upcomingSessions.map(s => (
+                      <SessionCard key={s.id} session={s} role="coach" onReschedule={(s) => setRescheduleModal({ open: true, session: s })} />
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
           </div>
 
-          {/* Right Panel: Stats */}
+          {/* Right Panel */}
           <div className="space-y-4">
             {/* Active Coachees */}
             <Card className="shadow-card">
               <CardContent className="p-5">
-                <h3 className="font-heading font-semibold text-foreground mb-3">Active Coachees</h3>
-                <div className="space-y-3">
-                  {[
-                    { name: 'Sarah Johnson', role: 'Senior Associate', avatar: 'https://randomuser.me/api/portraits/women/10.jpg', progress: 50 },
-                  ].map(coachee => (
-                    <div key={coachee.name} className="flex items-center gap-3">
-                      <Avatar className="w-9 h-9">
-                        <AvatarImage src={coachee.avatar} />
-                        <AvatarFallback>{coachee.name.split(' ').map(n=>n[0]).join('')}</AvatarFallback>
-                      </Avatar>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-foreground truncate">{coachee.name}</p>
-                        <p className="text-xs text-muted-foreground">{coachee.role}</p>
-                        <Progress value={coachee.progress} className="h-1.5 mt-1" />
-                      </div>
-                    </div>
-                  ))}
-                  <div className="mt-2 pt-2 border-t border-border">
-                    <div className="flex items-center justify-between text-xs">
-                      <span className="text-muted-foreground">Capacity</span>
-                      <span className="font-semibold text-primary">{currentUser?.coacheesEnrolled || 1}/{currentUser?.totalCapacity || 2}</span>
-                    </div>
-                    <Progress value={((currentUser?.coacheesEnrolled || 1) / (currentUser?.totalCapacity || 2)) * 100} className="h-2 mt-1" />
+                <h3 className="font-heading font-semibold text-foreground text-sm mb-3">Active Coachees</h3>
+                {activeJourneys.length === 0 ? (
+                  <p className="text-sm text-muted-foreground text-center py-4">No active coachees</p>
+                ) : (
+                  <div className="space-y-3">
+                    {activeJourneys.map(journey => {
+                      const journeySessions = sessions.filter(s => s.request_id === journey.id);
+                      const completed = journeySessions.filter(s => s.status === 'completed').length;
+                      return (
+                        <div key={journey.id} className="flex items-center gap-3 p-2.5 rounded-lg hover:bg-muted/50 transition-fast">
+                          <Avatar className="w-9 h-9">
+                            <AvatarImage src={journey.coachee_avatar} />
+                            <AvatarFallback>{journey.coachee_name?.[0]}</AvatarFallback>
+                          </Avatar>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium text-foreground truncate">{journey.coachee_name}</p>
+                            <p className="text-xs text-muted-foreground">{completed}/{journey.total_sessions} sessions</p>
+                          </div>
+                          <Button size="sm" variant="ghost" className="text-xs h-7 px-2" onClick={() => setScheduleModal({ open: true, request: journey })}>
+                            <Calendar className="w-3.5 h-3.5 mr-1" /> Schedule
+                          </Button>
+                        </div>
+                      );
+                    })}
                   </div>
-                </div>
+                )}
               </CardContent>
             </Card>
 
-            {/* Availability Card */}
+            {/* Quick Info */}
             <Card className="shadow-card">
               <CardContent className="p-5">
-                <div className="flex items-center justify-between mb-3">
-                  <h3 className="font-heading font-semibold text-foreground">Availability</h3>
-                  <Button variant="outline" size="sm" className="text-xs h-7">Edit</Button>
+                <h3 className="font-heading font-semibold text-foreground text-sm mb-3">Your Profile</h3>
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between"><span className="text-muted-foreground">Location</span><span className="text-foreground">{user?.location}</span></div>
+                  <div className="flex justify-between"><span className="text-muted-foreground">Experience</span><span className="text-foreground">{user?.experience}</span></div>
+                  <div className="flex justify-between"><span className="text-muted-foreground">Available Slots</span><span className="text-foreground font-medium">{user?.slots?.available}/{user?.slots?.total}</span></div>
                 </div>
-                <div className="space-y-2 text-xs">
-                  {[
-                    { day: 'Monday', times: '9 AM - 12 PM' },
-                    { day: 'Tuesday', times: '2 PM - 5 PM' },
-                    { day: 'Thursday', times: '10 AM - 1 PM' },
-                    { day: 'Friday', times: '3 PM - 6 PM' },
-                  ].map(slot => (
-                    <div key={slot.day} className="flex justify-between">
-                      <span className="text-muted-foreground">{slot.day}</span>
-                      <span className="font-medium text-foreground">{slot.times}</span>
-                    </div>
+                <div className="mt-3 flex flex-wrap gap-1">
+                  {(user?.certifications || []).map(c => (
+                    <Badge key={c} variant="outline" className="text-xs px-2 py-0.5 bg-primary-subtle border-primary/20 text-primary">{c}</Badge>
                   ))}
                 </div>
               </CardContent>
@@ -365,69 +285,76 @@ export default function CoachDashboard() {
         </div>
       </div>
 
-      <AcceptRequestModal
-        open={!!selectedRequest}
-        onClose={() => setSelectedRequest(null)}
-        request={selectedRequest}
-        onAccept={handleAccept}
-        onDecline={handleDecline}
-      />
+      {/* Accept/Decline Confirm Dialog */}
+      <Dialog open={actionModal.open} onOpenChange={(open) => !open && setActionModal({ open: false, request: null, action: null })}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="font-heading">
+              {actionModal.action === 'accept' ? 'Accept Coaching Request?' : 'Decline Coaching Request?'}
+            </DialogTitle>
+          </DialogHeader>
+          {actionModal.request && (
+            <div>
+              <div className="flex items-center gap-3 mb-4 bg-muted/50 rounded-xl p-3">
+                <Avatar className="w-10 h-10">
+                  <AvatarImage src={actionModal.request.coachee_avatar} />
+                  <AvatarFallback>{actionModal.request.coachee_name?.[0]}</AvatarFallback>
+                </Avatar>
+                <div>
+                  <p className="text-sm font-semibold">{actionModal.request.coachee_name}</p>
+                  <p className="text-xs text-muted-foreground">{actionModal.request.coachee_role} · {actionModal.request.mentorship_area}</p>
+                </div>
+              </div>
+              {actionModal.request.goals && (
+                <div className="bg-muted/30 rounded-lg p-3 mb-4">
+                  <p className="text-xs font-semibold text-foreground/70 mb-1">Goals</p>
+                  <p className="text-sm text-foreground">{actionModal.request.goals}</p>
+                </div>
+              )}
+              {actionModal.action === 'accept' && (
+                <div className="bg-accent-subtle border border-accent/30 rounded-xl p-3 mb-4">
+                  <p className="text-xs text-foreground/80"><strong>What happens next:</strong> You will be assigned as this coachee's coach. A total of {actionModal.request.total_sessions} sessions will be planned.</p>
+                </div>
+              )}
+              {actionModal.action === 'decline' && (
+                <div className="bg-destructive/5 border border-destructive/20 rounded-xl p-3 mb-4">
+                  <p className="text-xs text-foreground/80"><strong>Note:</strong> The request will be automatically forwarded to the coachee's next preferred coach.</p>
+                </div>
+              )}
+              <div className="flex justify-end gap-2">
+                <Button variant="outline" onClick={() => setActionModal({ open: false, request: null, action: null })}>Cancel</Button>
+                {actionModal.action === 'accept' ? (
+                  <Button className="bg-primary text-white" onClick={handleAccept} disabled={processing} data-testid="confirm-accept-btn">
+                    {processing ? 'Accepting...' : 'Confirm Accept'}
+                  </Button>
+                ) : (
+                  <Button variant="destructive" onClick={handleDecline} disabled={processing} data-testid="confirm-decline-btn">
+                    {processing ? 'Declining...' : 'Confirm Decline'}
+                  </Button>
+                )}
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
 
-      {/* Coach rescheduling → notifies coachee + admin */}
+      {/* Schedule modal for active journeys */}
+      {scheduleModal.request && (
+        <ScheduleModal
+          open={scheduleModal.open}
+          onClose={() => setScheduleModal({ open: false, request: null })}
+          coachName={scheduleModal.request.coachee_name}
+          coachAvatar={scheduleModal.request.coachee_avatar}
+          onConfirm={handleScheduleConfirm}
+        />
+      )}
+
       <RescheduleModal
         open={rescheduleModal.open}
         onClose={() => setRescheduleModal({ open: false, session: null })}
         session={rescheduleModal.session}
-        initiatorRole="coach"
         onConfirm={handleRescheduleConfirm}
       />
     </div>
-  );
-}
-
-function RequestCard({ request, onViewDetails, showActions = true, showStatus = false }) {
-  const statusConfig = {
-    pending: { label: 'Pending', className: 'status-pending' },
-    accepted: { label: 'Accepted', className: 'status-accepted' },
-    declined: { label: 'Declined', className: 'status-declined' },
-  };
-  const cfg = statusConfig[request.status] || statusConfig.pending;
-
-  return (
-    <Card className="shadow-card hover:shadow-md transition-smooth">
-      <CardContent className="p-4">
-        <div className="flex items-start gap-3">
-          <Avatar className="w-10 h-10 flex-shrink-0">
-            <AvatarImage src={request.coacheeAvatar} />
-            <AvatarFallback>{request.coacheeName.split(' ').map(n=>n[0]).join('')}</AvatarFallback>
-          </Avatar>
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 flex-wrap">
-              <span className="font-heading font-semibold text-sm text-foreground">{request.coacheeName}</span>
-              <Badge variant="outline" className="text-xs border-border">{request.coacheeRole}</Badge>
-              {showStatus && (
-                <span className={`text-xs px-2.5 py-0.5 rounded-full font-medium ${cfg.className}`}>{cfg.label}</span>
-              )}
-            </div>
-            <p className="text-xs text-muted-foreground mt-0.5">
-              Mentorship required on: <span className="font-medium text-foreground">{request.mentorshipArea}</span>
-            </p>
-            <p className="text-xs text-muted-foreground mt-1">
-              Submitted {new Date(request.createdAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}
-            </p>
-          </div>
-          {showActions && request.status === 'pending' && onViewDetails && (
-            <Button
-              variant="ghost"
-              size="sm"
-              className="text-xs text-primary h-7 flex-shrink-0"
-              onClick={onViewDetails}
-            >
-              View Details <ChevronRight className="w-3.5 h-3.5 ml-1" />
-            </Button>
-          )}
-        </div>
-      </CardContent>
-    </Card>
   );
 }

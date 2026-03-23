@@ -1,6 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { Bell, Search, ChevronDown, LogOut, Settings, User, Menu, X } from 'lucide-react';
-import { Badge } from '../components/ui/badge';
+import { Bell, Search, LogOut, User, Menu, X } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '../components/ui/avatar';
 import {
@@ -20,20 +19,15 @@ const roleNavLinks = {
   ],
   coach: [
     { label: 'Dashboard', path: '/coach-dashboard' },
-    { label: 'My Coaching History', path: '/coach-history' },
-    { label: 'My Calendar', path: '/coach-calendar' },
     { label: 'Help & Support', path: '/help' },
   ],
   admin: [
     { label: 'Dashboard', path: '/admin-dashboard' },
-    { label: 'Coaches', path: '/admin-coaches' },
-    { label: 'Coachees', path: '/admin-coachees' },
-    { label: 'Reports', path: '/admin-reports' },
   ],
 };
 
 export default function Navbar() {
-  const { currentRole, setCurrentRole, currentUser, unreadCount } = useApp();
+  const { user, logout, unreadCount } = useApp();
   const [showNotif, setShowNotif] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -41,17 +35,7 @@ export default function Navbar() {
   const navigate = useNavigate();
   const location = useLocation();
 
-  // Auto-detect role from URL path
-  useEffect(() => {
-    if (location.pathname.startsWith('/coach-') || location.pathname === '/coach-history' || location.pathname === '/coach-calendar') {
-      if (currentRole !== 'coach') setCurrentRole('coach');
-    } else if (location.pathname.startsWith('/admin-')) {
-      if (currentRole !== 'admin') setCurrentRole('admin');
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [location.pathname]);
-
-  const navLinks = roleNavLinks[currentRole] || roleNavLinks.coachee;
+  const navLinks = roleNavLinks[user?.role] || roleNavLinks.coachee;
 
   useEffect(() => {
     const handleClickOutside = (e) => {
@@ -63,13 +47,14 @@ export default function Navbar() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const handleRoleSwitch = (role) => {
-    setCurrentRole(role);
-    const defaultPath = role === 'coach' ? '/coach-dashboard' : role === 'admin' ? '/admin-dashboard' : '/';
-    navigate(defaultPath);
+  const handleLogout = () => {
+    logout();
+    navigate('/login');
   };
 
   const isActive = (path) => location.pathname === path;
+
+  if (!user) return null;
 
   return (
     <header className="sticky top-0 z-50 bg-header shadow-lg">
@@ -80,7 +65,7 @@ export default function Navbar() {
             <div
               className="flex items-center gap-2 cursor-pointer"
               onClick={() => {
-                const path = currentRole === 'coach' ? '/coach-dashboard' : currentRole === 'admin' ? '/admin-dashboard' : '/';
+                const path = user.role === 'coach' ? '/coach-dashboard' : user.role === 'admin' ? '/admin-dashboard' : '/';
                 navigate(path);
               }}
             >
@@ -102,9 +87,7 @@ export default function Navbar() {
                 key={link.path}
                 onClick={() => navigate(link.path)}
                 className={`px-4 py-1.5 rounded-full text-sm font-medium transition-smooth ${
-                  isActive(link.path)
-                    ? 'bg-white/20 text-white'
-                    : 'text-white/70 hover:text-white hover:bg-white/10'
+                  isActive(link.path) ? 'bg-white/20 text-white' : 'text-white/70 hover:text-white hover:bg-white/10'
                 }`}
               >
                 {link.label}
@@ -114,7 +97,6 @@ export default function Navbar() {
 
           {/* Right Icons */}
           <div className="flex items-center gap-2">
-            {/* Search */}
             <button
               onClick={() => setShowSearch(!showSearch)}
               className="w-9 h-9 rounded-full bg-white/15 hover:bg-white/25 flex items-center justify-center transition-smooth"
@@ -122,54 +104,29 @@ export default function Navbar() {
               <Search className="w-4 h-4 text-white" />
             </button>
 
-            {/* Role Switcher */}
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <button className="w-9 h-9 rounded-full bg-warning/80 hover:bg-warning flex items-center justify-center transition-smooth">
-                  <span className="text-white font-bold text-xs">
-                    {currentRole === 'coachee' ? 'CE' : currentRole === 'coach' ? 'CO' : 'AD'}
-                  </span>
-                </button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-48">
-                <DropdownMenuLabel className="text-xs text-muted-foreground">Switch Role (Demo)</DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={() => handleRoleSwitch('coachee')} className={currentRole === 'coachee' ? 'font-semibold text-primary' : ''}>
-                  Coachee View
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => handleRoleSwitch('coach')} className={currentRole === 'coach' ? 'font-semibold text-primary' : ''}>
-                  Coach View
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => handleRoleSwitch('admin')} className={currentRole === 'admin' ? 'font-semibold text-primary' : ''}>
-                  Admin View
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-
             {/* Notifications */}
             <div className="relative" ref={notifRef}>
               <button
                 onClick={() => setShowNotif(!showNotif)}
                 className="relative w-9 h-9 rounded-full bg-accent/80 hover:bg-accent flex items-center justify-center transition-smooth"
+                data-testid="notification-bell"
               >
                 <Bell className="w-4 h-4 text-white" />
-                {unreadCount() > 0 && (
-                  <span className="notif-dot">{unreadCount() > 9 ? '9+' : unreadCount()}</span>
+                {unreadCount > 0 && (
+                  <span className="notif-dot" data-testid="notification-count">{unreadCount > 9 ? '9+' : unreadCount}</span>
                 )}
               </button>
-              {showNotif && (
-                <NotificationPanel onClose={() => setShowNotif(false)} />
-              )}
+              {showNotif && <NotificationPanel onClose={() => setShowNotif(false)} />}
             </div>
 
-            {/* Avatar */}
+            {/* Avatar Dropdown */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <button className="flex items-center gap-1 transition-smooth">
                   <Avatar className="w-9 h-9 border-2 border-white/30">
-                    <AvatarImage src={currentUser?.avatar} />
+                    <AvatarImage src={user?.avatar} />
                     <AvatarFallback className="bg-primary-light text-white text-xs">
-                      {currentUser?.name?.split(' ').map(n => n[0]).join('') || 'U'}
+                      {user?.name?.split(' ').map(n => n[0]).join('') || 'U'}
                     </AvatarFallback>
                   </Avatar>
                 </button>
@@ -177,19 +134,19 @@ export default function Navbar() {
               <DropdownMenuContent align="end" className="w-56">
                 <DropdownMenuLabel>
                   <div className="flex flex-col">
-                    <span className="font-semibold">{currentUser?.name}</span>
-                    <span className="text-xs text-muted-foreground capitalize">{currentRole}</span>
+                    <span className="font-semibold">{user?.name}</span>
+                    <span className="text-xs text-muted-foreground capitalize">{user?.role}</span>
                   </div>
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem><User className="w-4 h-4 mr-2" /> My Profile</DropdownMenuItem>
-                <DropdownMenuItem><Settings className="w-4 h-4 mr-2" /> Settings</DropdownMenuItem>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem className="text-destructive"><LogOut className="w-4 h-4 mr-2" /> Sign Out</DropdownMenuItem>
+                <DropdownMenuItem className="text-destructive" onClick={handleLogout}>
+                  <LogOut className="w-4 h-4 mr-2" /> Sign Out
+                </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
 
-            {/* Mobile menu */}
             <button
               className="md:hidden w-9 h-9 rounded-full bg-white/15 flex items-center justify-center"
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
@@ -199,7 +156,6 @@ export default function Navbar() {
           </div>
         </div>
 
-        {/* Mobile Nav */}
         {mobileMenuOpen && (
           <div className="md:hidden pb-3 pt-1 animate-fade-in">
             {navLinks.map((link) => (
@@ -207,9 +163,7 @@ export default function Navbar() {
                 key={link.path}
                 onClick={() => { navigate(link.path); setMobileMenuOpen(false); }}
                 className={`w-full text-left px-4 py-2.5 text-sm transition-smooth ${
-                  isActive(link.path)
-                    ? 'text-white bg-white/15 rounded-lg'
-                    : 'text-white/70 hover:text-white'
+                  isActive(link.path) ? 'text-white bg-white/15 rounded-lg' : 'text-white/70 hover:text-white'
                 }`}
               >
                 {link.label}
@@ -218,7 +172,6 @@ export default function Navbar() {
           </div>
         )}
 
-        {/* Search Bar overlay */}
         {showSearch && (
           <div className="pb-3 animate-fade-in">
             <input
