@@ -7,7 +7,7 @@ import { Card, CardContent } from '../components/ui/card';
 import { Badge } from '../components/ui/badge';
 import {
   TrendingUp, Users, Calendar, Target, Clock, ChevronRight,
-  ArrowRight, BookOpen, CheckCircle, AlertCircle, Flag, Send
+  ArrowRight, BookOpen, CheckCircle, AlertCircle, Flag, Send, History
 } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '../components/ui/avatar';
 import { Progress } from '../components/ui/progress';
@@ -43,7 +43,7 @@ export default function CoacheeDashboard() {
   const { user, fetchNotifications } = useApp();
   const navigate = useNavigate();
   const [activeRequest, setActiveRequest] = useState(null);
-  const [sessions, setSessions] = useState([]);
+  const [allSessions, setAllSessions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [scheduleModal, setScheduleModal] = useState({ open: false });
   const [rescheduleModal, setRescheduleModal] = useState({ open: false, session: null });
@@ -56,7 +56,7 @@ export default function CoacheeDashboard() {
     try {
       const [reqRes, sessRes] = await Promise.all([api.getActiveRequest(), api.getSessions()]);
       setActiveRequest(reqRes.request);
-      setSessions(sessRes);
+      setAllSessions(sessRes);
     } catch (e) {
       console.error(e);
     } finally {
@@ -66,8 +66,15 @@ export default function CoacheeDashboard() {
 
   useEffect(() => { loadData(); }, []);
 
-  const upcomingSessions = sessions.filter(s => s.status === 'upcoming');
-  const completedSessions = sessions.filter(s => s.status === 'completed');
+  // Scope sessions to the active request
+  const currentSessions = activeRequest ? allSessions.filter(s => s.request_id === activeRequest.id) : [];
+  const upcomingSessions = currentSessions.filter(s => s.status === 'upcoming');
+  const completedSessions = currentSessions.filter(s => s.status === 'completed');
+
+  // Past sessions (from completed journeys)
+  const pastSessions = allSessions.filter(s => !activeRequest || s.request_id !== activeRequest.id);
+
+  const totalSessions = activeRequest?.total_sessions || 6;
 
   const activeCoach = activeRequest?.status === 'accepted'
     ? activeRequest.preferences.find(p => p.status === 'accepted')
@@ -104,8 +111,8 @@ export default function CoacheeDashboard() {
 
   const handleScheduleConfirm = async (slot) => {
     try {
-      await api.createSession({ request_id: activeRequest.id, date: slot.date, time: slot.time });
-      toast.success(`Session booked for ${slot.date} at ${slot.time}`);
+      await api.createSession({ request_id: activeRequest.id, date: slot.date, time: slot.time, topic: slot.topic || 'Coaching Session' });
+      toast.success(`Session booked for ${slot.day || slot.date} at ${slot.time}`);
       await loadData();
       fetchNotifications();
     } catch (e) {
@@ -134,13 +141,9 @@ export default function CoacheeDashboard() {
     );
   }
 
-  // State: completed journey, needs feedback
   const needsFeedback = activeRequest?.status === 'completed' && !activeRequest?.feedback_submitted;
-  // State: active journey with coach assigned
   const hasActiveJourney = activeRequest?.status === 'accepted';
-  // State: pending request (waiting for coach)
   const hasPendingRequest = activeRequest?.status === 'pending';
-  // State: no active request at all — can find new coach
   const canFindCoach = !activeRequest;
 
   return (
@@ -170,7 +173,7 @@ export default function CoacheeDashboard() {
           <StatCard icon={Calendar} value={upcomingSessions.length} label="Upcoming Sessions" color="primary" />
           <StatCard icon={CheckCircle} value={completedSessions.length} label="Completed Sessions" color="success" />
           <StatCard icon={Users} value={hasActiveJourney ? '1' : '0'} label="Active Coaches" color="warning" />
-          <StatCard icon={TrendingUp} value={`${completedSessions.length}/${activeRequest?.total_sessions || 6}`} label="Program Progress" color="accent" />
+          <StatCard icon={TrendingUp} value={`${completedSessions.length}/${totalSessions}`} label="Program Progress" color="accent" />
         </div>
 
         {/* Feedback Required */}
@@ -180,8 +183,10 @@ export default function CoacheeDashboard() {
               <div className="flex items-start gap-3 mb-4">
                 <AlertCircle className="w-5 h-5 text-warning flex-shrink-0 mt-0.5" />
                 <div>
-                  <p className="text-sm font-semibold text-foreground">Journey Complete — Feedback Required</p>
-                  <p className="text-xs text-muted-foreground mt-0.5">Submit feedback to unlock the ability to find a new coach.</p>
+                  <p className="text-sm font-semibold text-foreground">Journey Complete - Feedback Required</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    You completed {completedSessions.length} session{completedSessions.length !== 1 ? 's' : ''} out of {totalSessions}. Submit feedback to unlock the ability to find a new coach.
+                  </p>
                 </div>
               </div>
               <div className="mb-4">
@@ -220,10 +225,10 @@ export default function CoacheeDashboard() {
                 <div>
                   <p className="text-sm font-semibold text-foreground">Coaching Request Pending</p>
                   <p className="text-xs text-muted-foreground mt-1">
-                    Your request is being reviewed by your selected coaches. Currently waiting on preference #{(activeRequest.current_preference_index || 0) + 1}:
+                    Your request is being reviewed. Currently waiting on preference #{(activeRequest.current_preference_index || 0) + 1}:
                     <strong className="text-foreground ml-1">{activeRequest.preferences[activeRequest.current_preference_index]?.coach_name}</strong>
                   </p>
-                  <div className="flex gap-2 mt-3">
+                  <div className="flex gap-2 mt-3 flex-wrap">
                     {activeRequest.preferences.map((pref, i) => (
                       <div key={i} className={`text-xs px-3 py-1.5 rounded-lg border ${
                         pref.status === 'pending' ? 'bg-primary-subtle border-primary/30 text-primary font-medium' :
@@ -242,7 +247,7 @@ export default function CoacheeDashboard() {
           </Card>
         )}
 
-        {/* No active request prompt */}
+        {/* No active request */}
         {canFindCoach && (
           <Card className="shadow-card mb-6 border-accent/30" data-testid="no-coach-card">
             <CardContent className="p-6 text-center">
@@ -259,7 +264,6 @@ export default function CoacheeDashboard() {
         {/* Active Journey */}
         {hasActiveJourney && (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Active Coach Card */}
             <div className="lg:col-span-1">
               <div className="bg-card rounded-xl border border-border shadow-card overflow-hidden">
                 <div className="coach-banner relative">
@@ -280,9 +284,9 @@ export default function CoacheeDashboard() {
                   <div className="mt-4">
                     <div className="flex items-center justify-between text-xs mb-1.5">
                       <span className="text-muted-foreground">Program Progress</span>
-                      <span className="font-semibold text-primary">{completedSessions.length} / {activeRequest?.total_sessions || 6} sessions</span>
+                      <span className="font-semibold text-primary">{completedSessions.length} / {totalSessions} sessions</span>
                     </div>
-                    <Progress value={(completedSessions.length / (activeRequest?.total_sessions || 6)) * 100} className="h-2" />
+                    <Progress value={(completedSessions.length / totalSessions) * 100} className="h-2" />
                   </div>
                   <div className="grid grid-cols-2 gap-3 mt-4">
                     <Button size="sm" variant="outline" className="text-xs h-8" onClick={() => setScheduleModal({ open: true })} data-testid="schedule-session-btn">
@@ -292,7 +296,6 @@ export default function CoacheeDashboard() {
                       View Sessions <ChevronRight className="w-3.5 h-3.5 ml-1" />
                     </Button>
                   </div>
-                  {/* Complete Journey Button */}
                   <Button
                     className="w-full mt-3 bg-warning hover:bg-warning/90 text-white text-xs h-9"
                     onClick={handleCompleteJourney}
@@ -309,26 +312,19 @@ export default function CoacheeDashboard() {
                 <h3 className="font-heading font-semibold text-sm text-foreground mb-3">Quick Actions</h3>
                 <div className="space-y-2">
                   {[
-                    { label: 'Browse Coaches', icon: Users, action: () => navigate('/coaches'), color: 'text-primary', disabled: true },
-                    { label: 'My Sessions', icon: Calendar, action: () => navigate('/sessions'), color: 'text-accent', disabled: false },
-                    { label: 'Help & Support', icon: BookOpen, action: () => {}, color: 'text-muted-foreground', disabled: false },
+                    { label: 'My Sessions', icon: Calendar, action: () => navigate('/sessions'), color: 'text-accent' },
+                    { label: 'Help & Support', icon: BookOpen, action: () => {}, color: 'text-muted-foreground' },
                   ].map(item => (
-                    <button
-                      key={item.label}
-                      onClick={item.disabled ? undefined : item.action}
-                      className={`w-full flex items-center gap-3 p-2.5 rounded-lg transition-fast text-left ${item.disabled ? 'opacity-50 cursor-not-allowed' : 'hover:bg-muted'}`}
-                    >
+                    <button key={item.label} onClick={item.action} className="w-full flex items-center gap-3 p-2.5 rounded-lg transition-fast text-left hover:bg-muted">
                       <item.icon className={`w-4 h-4 ${item.color}`} />
                       <span className="text-sm text-foreground">{item.label}</span>
-                      {item.disabled && <span className="text-xs text-muted-foreground ml-auto">(Active journey)</span>}
-                      {!item.disabled && <ChevronRight className="w-4 h-4 text-muted-foreground ml-auto" />}
+                      <ChevronRight className="w-4 h-4 text-muted-foreground ml-auto" />
                     </button>
                   ))}
                 </div>
               </div>
             </div>
 
-            {/* Sessions Panel */}
             <div className="lg:col-span-2">
               <div className="bg-card rounded-xl border border-border shadow-card p-5">
                 <div className="flex items-center justify-between mb-4">
@@ -352,7 +348,7 @@ export default function CoacheeDashboard() {
 
               {completedSessions.length > 0 && (
                 <div className="bg-card rounded-xl border border-border shadow-card p-5 mt-4">
-                  <h3 className="font-heading font-semibold text-foreground mb-4">Past Sessions</h3>
+                  <h3 className="font-heading font-semibold text-foreground mb-4">Completed Sessions</h3>
                   <div className="space-y-3">
                     {completedSessions.map(s => (
                       <SessionCard key={s.id} session={s} role="coachee" onReschedule={() => {}} />
@@ -363,13 +359,30 @@ export default function CoacheeDashboard() {
             </div>
           </div>
         )}
+
+        {/* Past Sessions History */}
+        {pastSessions.length > 0 && !hasActiveJourney && !hasPendingRequest && (
+          <div className="bg-card rounded-xl border border-border shadow-card p-5 mt-6">
+            <div className="flex items-center gap-2 mb-4">
+              <History className="w-4 h-4 text-muted-foreground" />
+              <h3 className="font-heading font-semibold text-foreground">Past Sessions</h3>
+              <Badge variant="outline" className="text-xs">{pastSessions.length} sessions</Badge>
+            </div>
+            <div className="space-y-3">
+              {pastSessions.slice(0, 5).map(s => (
+                <SessionCard key={s.id} session={s} role="coachee" onReschedule={() => {}} />
+              ))}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Modals */}
-      {activeCoach && (
+      {activeCoach && activeRequest && (
         <ScheduleModal
           open={scheduleModal.open}
           onClose={() => setScheduleModal({ open: false })}
+          coachId={activeRequest.active_coach_id}
           coachName={activeCoach.coach_name}
           coachAvatar={activeCoach.coach_avatar}
           onConfirm={handleScheduleConfirm}
@@ -379,6 +392,7 @@ export default function CoacheeDashboard() {
         open={rescheduleModal.open}
         onClose={() => setRescheduleModal({ open: false, session: null })}
         session={rescheduleModal.session}
+        coachId={activeRequest?.active_coach_id}
         onConfirm={handleRescheduleConfirm}
       />
     </div>

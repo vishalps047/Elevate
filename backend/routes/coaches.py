@@ -1,17 +1,9 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from database import db
+from models import AvailabilityInput
 from routes.auth import get_current_user
 
 router = APIRouter(prefix="/coaches", tags=["coaches"])
-
-AVAILABILITY_SLOTS = [
-    {"date": "2025-02-10", "day": "Mon, Feb 10", "slots": ["9:00 AM", "11:00 AM", "3:00 PM"]},
-    {"date": "2025-02-11", "day": "Tue, Feb 11", "slots": ["10:00 AM", "2:00 PM", "4:00 PM"]},
-    {"date": "2025-02-13", "day": "Thu, Feb 13", "slots": ["9:00 AM", "1:00 PM"]},
-    {"date": "2025-02-14", "day": "Fri, Feb 14", "slots": ["11:00 AM", "3:00 PM", "5:00 PM"]},
-    {"date": "2025-02-17", "day": "Mon, Feb 17", "slots": ["9:00 AM", "10:00 AM", "2:00 PM"]},
-    {"date": "2025-02-18", "day": "Tue, Feb 18", "slots": ["11:00 AM", "4:00 PM"]},
-]
 
 
 @router.get("")
@@ -25,4 +17,71 @@ async def list_coaches(user: dict = Depends(get_current_user)):
 
 @router.get("/{coach_id}/availability")
 async def get_availability(coach_id: str, user: dict = Depends(get_current_user)):
-    return AVAILABILITY_SLOTS
+    avail = await db.coach_availability.find(
+        {"coach_id": coach_id, "date": {"$gte": "2026-01-01"}},
+        {"_id": 0},
+    ).sort("date", 1).to_list(200)
+
+    result = []
+    for a in avail:
+        booked = set(a.get("booked_slots", []))
+        free = [s for s in a["slots"] if s not in booked]
+        if free:
+            result.append({
+                "date": a["date"],
+                "day": a["day_label"],
+                "slots": free,
+            })
+    return result
+
+
+@router.get("/{coach_id}/availability/raw")
+async def get_raw_availability(coach_id: str, user: dict = Depends(get_current_user)):
+    """Returns full availability including booked slots — for coach's own calendar view."""
+    if user["role"] != "coach" or user["id"] != coach_id:
+        raise HTTPException(status_code=403, detail="Only the coach can view their own raw availability")
+    avail = await db.coach_availability.find(
+        {"coach_id": coach_id},
+        {"_id": 0},
+    ).sort("date", 1).to_list(500)
+    return avail
+
+
+@router.post("/availability")
+async def set_availability(body: AvailabilityInput, user: dict = Depends(get_current_user)):
+    if user["role"] != "coach":
+        raise HTTPException(status_code=403, detail="Only coaches can set availability")
+
+    existing = await db.coach_availability.find_one(
+        {"coach_id": user["id"], "date": body.date}
+    )
+
+    if existing:
+        await db.coach_availability.update_one(
+            {"coach_id": user["id"], "date": body.date},
+            {"$set": {"slots": body.slots, "day_label": body.day_label}},
+        )
+    else:
+        await db.coach_availability.insert_one({
+            "coach_id": user["id"],
+            "date": body.date,
+            "day_label": body.day_label,
+            "slots": body.slots,
+            "booked_slots": [],
+        })
+
+    return {"message": "Availability updated"}
+
+
+@router.delete("/availability/{date}")
+async def remove_availability(date: str, user: dict = Depends(get_current_user)):
+    if user["role"] != "coach":
+        raise HTTPException(status_code=403, detail="Only coaches can manage availability")
+
+    result = await db.coach_availability.delete_one(
+        {"coach_id": user["id"], "date": date}
+    )
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="No availability found for that date")
+
+    return {"message": "Availability removed"}

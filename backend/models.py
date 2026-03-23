@@ -36,3 +36,13 @@ class RescheduleBody(BaseModel):
 class FeedbackBody(BaseModel):
     rating: int
     comment: Optional[str] = ""
+
+
+class UpdateTotalSessions(BaseModel):
+    total_sessions: int
+
+
+class AvailabilityInput(BaseModel):
+    date: str
+    day_label: str
+    slots: List[str]

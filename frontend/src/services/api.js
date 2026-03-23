@@ -47,6 +47,9 @@ class ApiService {
   // Coaches
   getCoaches() { return this.request('/api/coaches'); }
   getAvailability(coachId) { return this.request(`/api/coaches/${coachId}/availability`); }
+  getRawAvailability(coachId) { return this.request(`/api/coaches/${coachId}/availability/raw`); }
+  setAvailability(data) { return this.request('/api/coaches/availability', { method: 'POST', body: JSON.stringify(data) }); }
+  removeAvailability(date) { return this.request(`/api/coaches/availability/${date}`, { method: 'DELETE' }); }
 
   // Requests
   createRequest(data) { return this.request('/api/requests', { method: 'POST', body: JSON.stringify(data) }); }
@@ -55,6 +58,7 @@ class ApiService {
   acceptRequest(id) { return this.request(`/api/requests/${id}/accept`, { method: 'PUT' }); }
   declineRequest(id) { return this.request(`/api/requests/${id}/decline`, { method: 'PUT' }); }
   completeJourney(id) { return this.request(`/api/requests/${id}/complete-journey`, { method: 'PUT' }); }
+  updateTotalSessions(id, total) { return this.request(`/api/requests/${id}/total-sessions`, { method: 'PUT', body: JSON.stringify({ total_sessions: total }) }); }
   submitFeedback(requestId, data) {
     return this.request(`/api/requests/${requestId}/feedback`, { method: 'POST', body: JSON.stringify(data) });
   }

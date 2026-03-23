@@ -2,6 +2,7 @@ from fastapi import FastAPI
 from contextlib import asynccontextmanager
 from starlette.middleware.cors import CORSMiddleware
 import os
+import asyncio
 import logging
 from pathlib import Path
 from dotenv import load_dotenv
@@ -16,6 +17,7 @@ from routes.sessions import router as sessions_router
 from routes.notifications import router as notifications_router
 from seed import seed_database
 from database import client
+from helpers import deliver_due_reminders
 
 logging.basicConfig(
     level=logging.INFO,
@@ -24,10 +26,22 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
+async def reminder_loop():
+    """Background task: check for due reminders every 60 seconds."""
+    while True:
+        try:
+            await deliver_due_reminders()
+        except Exception as e:
+            logger.error(f"Reminder loop error: {e}")
+        await asyncio.sleep(60)
+
+
 @asynccontextmanager
 async def lifespan(app):
     await seed_database()
+    task = asyncio.create_task(reminder_loop())
     yield
+    task.cancel()
     client.close()
 
 

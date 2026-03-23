@@ -2,7 +2,7 @@ from fastapi import APIRouter, HTTPException, Depends
 from database import db
 from models import CreateSessionBody, RescheduleBody
 from routes.auth import get_current_user
-from helpers import create_notification
+from helpers import create_notification, schedule_session_reminders
 import uuid
 from datetime import datetime, timezone
 
@@ -31,6 +31,22 @@ async def create_session(body: CreateSessionBody, user: dict = Depends(get_curre
     request = await db.coaching_requests.find_one({"id": body.request_id}, {"_id": 0})
     if not request or request["status"] != "accepted":
         raise HTTPException(status_code=400, detail="Invalid or non-accepted request")
+
+    # Check coach availability
+    avail = await db.coach_availability.find_one(
+        {"coach_id": request["active_coach_id"], "date": body.date}
+    )
+    if avail:
+        booked = set(avail.get("booked_slots", []))
+        free = [s for s in avail["slots"] if s not in booked]
+        if body.time not in free:
+            raise HTTPException(status_code=400, detail="This time slot is not available")
+
+        # Mark slot as booked
+        await db.coach_availability.update_one(
+            {"coach_id": request["active_coach_id"], "date": body.date},
+            {"$push": {"booked_slots": body.time}},
+        )
 
     session_count = await db.sessions.count_documents({"request_id": body.request_id})
 
@@ -84,6 +100,9 @@ async def create_session(body: CreateSessionBody, user: dict = Depends(get_curre
             coach.get("avatar"),
         )
 
+    # Schedule reminders (2 days, 1 day, 1 hour before)
+    await schedule_session_reminders(session_doc)
+
     return session_doc
 
 
@@ -93,24 +112,50 @@ async def reschedule_session(session_id: str, body: RescheduleBody, user: dict =
     if not session:
         raise HTTPException(status_code=404, detail="Session not found")
 
+    # Free the old slot
+    await db.coach_availability.update_one(
+        {"coach_id": session["coach_id"], "date": session["date"]},
+        {"$pull": {"booked_slots": session["time"]}},
+    )
+
+    # Book the new slot
+    new_avail = await db.coach_availability.find_one(
+        {"coach_id": session["coach_id"], "date": body.date}
+    )
+    if new_avail:
+        booked = set(new_avail.get("booked_slots", []))
+        free = [s for s in new_avail["slots"] if s not in booked]
+        if body.time not in free:
+            # Re-book old slot
+            await db.coach_availability.update_one(
+                {"coach_id": session["coach_id"], "date": session["date"]},
+                {"$push": {"booked_slots": session["time"]}},
+            )
+            raise HTTPException(status_code=400, detail="New time slot is not available")
+        await db.coach_availability.update_one(
+            {"coach_id": session["coach_id"], "date": body.date},
+            {"$push": {"booked_slots": body.time}},
+        )
+
     await db.sessions.update_one(
         {"id": session_id},
         {"$set": {"date": body.date, "time": body.time}},
     )
 
+    # Cancel old reminders and schedule new ones
+    await db.scheduled_reminders.delete_many({"session_id": session_id, "delivered": False})
+    updated_session = {**session, "date": body.date, "time": body.time}
+    await schedule_session_reminders(updated_session)
+
     if user["role"] == "coachee":
         await create_notification(
-            session["coach_id"],
-            "reschedule",
-            "Session Rescheduled",
+            session["coach_id"], "reschedule", "Session Rescheduled",
             f"{user['name']} rescheduled Session {session.get('session_number', '')} to {body.date} at {body.time}.",
             user.get("avatar"),
         )
     else:
         await create_notification(
-            session["coachee_id"],
-            "reschedule",
-            "Session Rescheduled by Coach",
+            session["coachee_id"], "reschedule", "Session Rescheduled by Coach",
             f"{user['name']} rescheduled Session {session.get('session_number', '')} to {body.date} at {body.time}.",
             user.get("avatar"),
         )

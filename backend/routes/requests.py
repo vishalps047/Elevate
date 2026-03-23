@@ -1,6 +1,6 @@
 from fastapi import APIRouter, HTTPException, Depends
 from database import db
-from models import CreateRequestBody, FeedbackBody
+from models import CreateRequestBody, FeedbackBody, UpdateTotalSessions
 from routes.auth import get_current_user
 from helpers import create_notification
 import uuid
@@ -317,3 +317,30 @@ async def submit_feedback(request_id: str, body: FeedbackBody, user: dict = Depe
     )
 
     return feedback_doc
+
+
+@router.put("/{request_id}/total-sessions")
+async def update_total_sessions(request_id: str, body: UpdateTotalSessions, user: dict = Depends(get_current_user)):
+    if user["role"] != "coach":
+        raise HTTPException(status_code=403, detail="Only coaches can update total sessions")
+
+    request = await db.coaching_requests.find_one({"id": request_id}, {"_id": 0})
+    if not request:
+        raise HTTPException(status_code=404, detail="Request not found")
+    if request.get("active_coach_id") != user["id"]:
+        raise HTTPException(status_code=403, detail="Not your coaching engagement")
+    if request["status"] != "accepted":
+        raise HTTPException(status_code=400, detail="Can only edit active journeys")
+
+    await db.coaching_requests.update_one(
+        {"id": request_id},
+        {"$set": {"total_sessions": body.total_sessions}},
+    )
+
+    # Also update total_sessions in all existing sessions
+    await db.sessions.update_many(
+        {"request_id": request_id},
+        {"$set": {"total_sessions": body.total_sessions}},
+    )
+
+    return {"message": f"Total sessions updated to {body.total_sessions}"}
