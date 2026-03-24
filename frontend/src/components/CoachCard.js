@@ -20,9 +20,9 @@ export function StarRating({ rating, size = 'sm' }) {
 
 export function CoachCard({ coach, onSelectCoach, isSelected, preferenceNumber, mode = 'view' }) {
   return (
-    <Card className={`shadow-card hover:shadow-md transition-smooth overflow-hidden ${isSelected ? 'ring-2 ring-primary border-primary' : ''}`} data-testid={`coach-card-${coach.id}`}>
-      <CardContent className="p-0">
-        <div className="coach-banner relative">
+    <Card className={`shadow-card hover:shadow-md transition-smooth overflow-hidden h-full flex flex-col ${isSelected ? 'ring-2 ring-primary border-primary' : ''}`} data-testid={`coach-card-${coach.id}`}>
+      <CardContent className="p-0 flex flex-col flex-1">
+        <div className="coach-banner relative flex-shrink-0">
           <div className="absolute inset-0 opacity-10 bg-white" />
           {isSelected && (
             <div className="absolute top-2 right-2 w-7 h-7 rounded-full bg-primary text-white flex items-center justify-center text-xs font-bold shadow-md">
@@ -30,9 +30,9 @@ export function CoachCard({ coach, onSelectCoach, isSelected, preferenceNumber, 
             </div>
           )}
         </div>
-        <div className="p-4 -mt-5">
+        <div className="p-4 -mt-5 flex flex-col flex-1">
           <div className="flex items-start gap-3">
-            <Avatar className="w-12 h-12" style={{ border: '3px solid white' }}>
+            <Avatar className="w-12 h-12 flex-shrink-0" style={{ border: '3px solid white' }}>
               <AvatarImage src={coach.avatar} />
               <AvatarFallback className="bg-primary-light text-white">{coach.name?.split(' ').map(n => n[0]).join('')}</AvatarFallback>
             </Avatar>
@@ -43,7 +43,7 @@ export function CoachCard({ coach, onSelectCoach, isSelected, preferenceNumber, 
           </div>
 
           {/* Location */}
-          <div className="flex items-center gap-3 mb-3 mt-2">
+          <div className="flex items-center gap-3 mb-2 mt-2">
             <div className="flex items-center gap-1 text-muted-foreground">
               <MapPin className="w-3 h-3" />
               <span className="text-xs">{coach.location}</span>
@@ -51,7 +51,7 @@ export function CoachCard({ coach, onSelectCoach, isSelected, preferenceNumber, 
           </div>
 
           {/* Certifications */}
-          <div className="flex flex-wrap gap-1 mb-3">
+          <div className="flex flex-wrap gap-1 mb-2">
             {(coach.certifications || []).slice(0, 2).map(cert => (
               <Badge key={cert} variant="outline" className="text-xs px-2 py-0.5 gap-1 bg-primary-subtle border-primary/20 text-primary font-normal">
                 <Award className="w-3 h-3" />{cert}
@@ -60,17 +60,17 @@ export function CoachCard({ coach, onSelectCoach, isSelected, preferenceNumber, 
           </div>
 
           {/* Expertise */}
-          <div className="flex flex-wrap gap-1 mb-3">
+          <div className="flex flex-wrap gap-1 mb-2 min-h-[24px]">
             {(coach.expertise || []).slice(0, 3).map(exp => (
               <span key={exp} className="text-xs bg-accent-subtle text-accent px-2 py-0.5 rounded-full">{exp}</span>
             ))}
           </div>
 
           {/* About */}
-          <p className="text-xs text-muted-foreground line-clamp-2 mb-3">{coach.about}</p>
+          <p className="text-xs text-muted-foreground line-clamp-2 mb-3 flex-1">{coach.about}</p>
 
           {/* Footer */}
-          <div className="flex items-center justify-between pt-3 border-t border-border">
+          <div className="flex items-center justify-between pt-3 border-t border-border mt-auto">
             <div className="flex items-center gap-3 text-xs text-muted-foreground">
               <span className="flex items-center gap-1"><BookOpen className="w-3 h-3" /> {coach.experience}</span>
               <span className="flex items-center gap-1"><Users className="w-3 h-3" /> {coach.slots?.available || 0} slots</span>

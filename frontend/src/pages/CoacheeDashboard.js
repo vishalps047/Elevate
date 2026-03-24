@@ -76,7 +76,7 @@ export default function CoacheeDashboard() {
 
   const totalSessions = activeRequest?.total_sessions || 6;
 
-  const activeCoach = activeRequest?.status === 'accepted'
+  const activeCoach = (activeRequest?.status === 'accepted' || activeRequest?.status === 'paused')
     ? activeRequest.preferences.find(p => p.status === 'accepted')
     : null;
 
@@ -143,6 +143,7 @@ export default function CoacheeDashboard() {
 
   const needsFeedback = activeRequest?.status === 'completed' && !activeRequest?.feedback_submitted;
   const hasActiveJourney = activeRequest?.status === 'accepted';
+  const hasPausedJourney = activeRequest?.status === 'paused';
   const hasPendingRequest = activeRequest?.status === 'pending';
   const canFindCoach = !activeRequest;
 
@@ -171,9 +172,9 @@ export default function CoacheeDashboard() {
         {/* Stats */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
           <StatCard icon={Calendar} value={upcomingSessions.length} label="Upcoming Sessions" color="primary" />
-          <StatCard icon={CheckCircle} value={completedSessions.length} label="Completed Sessions" color="success" />
-          <StatCard icon={Users} value={hasActiveJourney ? '1' : '0'} label="Active Coaches" color="warning" />
-          <StatCard icon={TrendingUp} value={`${completedSessions.length}/${totalSessions}`} label="Program Progress" color="accent" />
+          <StatCard icon={CheckCircle} value={allSessions.filter(s => s.status === 'completed').length} label="Sessions Completed" sub="All journeys" color="success" />
+          <StatCard icon={Users} value={(hasActiveJourney || hasPausedJourney) ? '1' : '0'} label="Active Coaches" color="warning" />
+          <StatCard icon={TrendingUp} value={`${completedSessions.length}/${totalSessions}`} label="Current Progress" color="accent" />
         </div>
 
         {/* Feedback Required */}
@@ -247,6 +248,23 @@ export default function CoacheeDashboard() {
           </Card>
         )}
 
+        {/* Paused Journey Banner */}
+        {hasPausedJourney && (
+          <Card className="shadow-card mb-6 border-warning/30" data-testid="paused-journey-card">
+            <CardContent className="p-5">
+              <div className="flex items-start gap-3">
+                <AlertCircle className="w-5 h-5 text-warning flex-shrink-0 mt-0.5" />
+                <div>
+                  <p className="text-sm font-semibold text-foreground">Coaching Journey Paused</p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Your coach has temporarily paused this coaching journey. Session scheduling is disabled until the journey is resumed.
+                  </p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         {/* No active request */}
         {canFindCoach && (
           <Card className="shadow-card mb-6 border-accent/30" data-testid="no-coach-card">
@@ -262,7 +280,7 @@ export default function CoacheeDashboard() {
         )}
 
         {/* Active Journey */}
-        {hasActiveJourney && (
+        {(hasActiveJourney || hasPausedJourney) && (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div className="lg:col-span-1">
               <div className="bg-card rounded-xl border border-border shadow-card overflow-hidden">
@@ -279,7 +297,9 @@ export default function CoacheeDashboard() {
                       <h3 className="font-heading font-semibold text-foreground" data-testid="active-coach-name">{activeCoach?.coach_name}</h3>
                       <p className="text-xs text-muted-foreground">Your assigned coach</p>
                     </div>
-                    <Badge className="bg-success/10 text-success border-0 text-xs">Active</Badge>
+                    <Badge className={`border-0 text-xs ${hasPausedJourney ? 'bg-warning/10 text-warning' : 'bg-success/10 text-success'}`} data-testid="journey-status-badge">
+                      {hasPausedJourney ? 'Paused' : 'Active'}
+                    </Badge>
                   </div>
                   <div className="mt-4">
                     <div className="flex items-center justify-between text-xs mb-1.5">
@@ -289,22 +309,24 @@ export default function CoacheeDashboard() {
                     <Progress value={(completedSessions.length / totalSessions) * 100} className="h-2" />
                   </div>
                   <div className="grid grid-cols-2 gap-3 mt-4">
-                    <Button size="sm" variant="outline" className="text-xs h-8" onClick={() => setScheduleModal({ open: true })} data-testid="schedule-session-btn">
+                    <Button size="sm" variant="outline" className="text-xs h-8" onClick={() => setScheduleModal({ open: true })} disabled={hasPausedJourney} data-testid="schedule-session-btn">
                       <Calendar className="w-3.5 h-3.5 mr-1" /> Schedule
                     </Button>
                     <Button size="sm" className="bg-primary hover:bg-primary/90 text-white text-xs h-8" onClick={() => navigate('/sessions')}>
                       View Sessions <ChevronRight className="w-3.5 h-3.5 ml-1" />
                     </Button>
                   </div>
-                  <Button
-                    className="w-full mt-3 bg-warning hover:bg-warning/90 text-white text-xs h-9"
-                    onClick={handleCompleteJourney}
-                    disabled={completingJourney}
-                    data-testid="complete-journey-btn"
-                  >
-                    <Flag className="w-3.5 h-3.5 mr-1" />
-                    {completingJourney ? 'Completing...' : 'Complete Journey (Demo)'}
-                  </Button>
+                  {!hasPausedJourney && (
+                    <Button
+                      className="w-full mt-3 bg-warning hover:bg-warning/90 text-white text-xs h-9"
+                      onClick={handleCompleteJourney}
+                      disabled={completingJourney}
+                      data-testid="complete-journey-btn"
+                    >
+                      <Flag className="w-3.5 h-3.5 mr-1" />
+                      {completingJourney ? 'Completing...' : 'Complete Journey (Demo)'}
+                    </Button>
+                  )}
                 </div>
               </div>
 
@@ -378,7 +400,7 @@ export default function CoacheeDashboard() {
       </div>
 
       {/* Modals */}
-      {activeCoach && activeRequest && (
+      {activeCoach && activeRequest && activeRequest.status === 'accepted' && (
         <ScheduleModal
           open={scheduleModal.open}
           onClose={() => setScheduleModal({ open: false })}

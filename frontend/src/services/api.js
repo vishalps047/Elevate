@@ -58,6 +58,8 @@ class ApiService {
   acceptRequest(id) { return this.request(`/api/requests/${id}/accept`, { method: 'PUT' }); }
   declineRequest(id) { return this.request(`/api/requests/${id}/decline`, { method: 'PUT' }); }
   completeJourney(id) { return this.request(`/api/requests/${id}/complete-journey`, { method: 'PUT' }); }
+  pauseJourney(id) { return this.request(`/api/requests/${id}/pause`, { method: 'PUT' }); }
+  restartJourney(id) { return this.request(`/api/requests/${id}/restart`, { method: 'PUT' }); }
   updateTotalSessions(id, total) { return this.request(`/api/requests/${id}/total-sessions`, { method: 'PUT', body: JSON.stringify({ total_sessions: total }) }); }
   submitFeedback(requestId, data) {
     return this.request(`/api/requests/${requestId}/feedback`, { method: 'POST', body: JSON.stringify(data) });

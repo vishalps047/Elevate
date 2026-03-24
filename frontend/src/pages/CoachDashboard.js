@@ -272,7 +272,7 @@ export default function CoachDashboard() {
     return pref?.coach_id === user?.id && pref?.status === 'pending';
   });
 
-  const activeJourneys = requests.filter(r => r.status === 'accepted' && r.active_coach_id === user?.id);
+  const activeJourneys = requests.filter(r => (r.status === 'accepted' || r.status === 'paused') && r.active_coach_id === user?.id);
   const upcomingSessions = sessions.filter(s => s.status === 'upcoming');
   const completedSessions = sessions.filter(s => s.status === 'completed');
 
@@ -307,6 +307,24 @@ export default function CoachDashboard() {
       toast.success(`Total sessions updated to ${editSessionsModal.value}`);
       setEditSessionsModal({ open: false, request: null, value: 6 });
       await loadData();
+    } catch (e) { toast.error(e.message); }
+  };
+
+  const handlePauseJourney = async (journeyId) => {
+    try {
+      await api.pauseJourney(journeyId);
+      toast.success('Journey paused. Coachee has been notified.');
+      await loadData();
+      fetchNotifications();
+    } catch (e) { toast.error(e.message); }
+  };
+
+  const handleRestartJourney = async (journeyId) => {
+    try {
+      await api.restartJourney(journeyId);
+      toast.success('Journey resumed! Coachee has been notified.');
+      await loadData();
+      fetchNotifications();
     } catch (e) { toast.error(e.message); }
   };
 
@@ -360,7 +378,7 @@ export default function CoachDashboard() {
           <StatCard icon={MessageSquare} value={pendingRequests.length} label="Pending Requests" color="warning" />
           <StatCard icon={Users} value={activeJourneys.length} label="Active Coachees" color="primary" />
           <StatCard icon={Calendar} value={upcomingSessions.length} label="Upcoming Sessions" color="accent" />
-          <StatCard icon={TrendingUp} value={completedSessions.length} label="Completed Sessions" color="success" />
+          <StatCard icon={TrendingUp} value={sessions.filter(s => s.status === 'completed').length} label="Sessions Completed" color="success" />
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -438,8 +456,9 @@ export default function CoachDashboard() {
                     {activeJourneys.map(journey => {
                       const journeySessions = sessions.filter(s => s.request_id === journey.id);
                       const completed = journeySessions.filter(s => s.status === 'completed').length;
+                      const isPaused = journey.status === 'paused';
                       return (
-                        <div key={journey.id} className="p-3 rounded-xl bg-muted/50 border border-border">
+                        <div key={journey.id} className={`p-3 rounded-xl border ${isPaused ? 'bg-warning/5 border-warning/30' : 'bg-muted/50 border-border'}`} data-testid={`journey-${journey.id}`}>
                           <div className="flex items-center gap-3 mb-2">
                             <Avatar className="w-9 h-9">
                               <AvatarImage src={journey.coachee_avatar} />
@@ -449,6 +468,9 @@ export default function CoachDashboard() {
                               <p className="text-sm font-medium text-foreground truncate">{journey.coachee_name}</p>
                               <p className="text-xs text-muted-foreground">{journey.mentorship_area}</p>
                             </div>
+                            {isPaused && (
+                              <Badge className="bg-warning/10 text-warning border-0 text-xs" data-testid={`paused-badge-${journey.id}`}>Paused</Badge>
+                            )}
                           </div>
                           <div className="flex items-center justify-between text-xs mb-2">
                             <span className="text-muted-foreground">Progress: {completed}/{journey.total_sessions} sessions</span>
@@ -461,9 +483,20 @@ export default function CoachDashboard() {
                             </button>
                           </div>
                           <div className="flex gap-2">
-                            <Button size="sm" variant="outline" className="text-xs h-7 flex-1" onClick={() => setScheduleModal({ open: true, request: journey })}>
-                              <Calendar className="w-3 h-3 mr-1" /> Schedule
-                            </Button>
+                            {!isPaused && (
+                              <Button size="sm" variant="outline" className="text-xs h-7 flex-1" onClick={() => setScheduleModal({ open: true, request: journey })} data-testid={`schedule-btn-${journey.id}`}>
+                                <Calendar className="w-3 h-3 mr-1" /> Schedule
+                              </Button>
+                            )}
+                            {isPaused ? (
+                              <Button size="sm" className="bg-success hover:bg-success/90 text-white text-xs h-7 flex-1" onClick={() => handleRestartJourney(journey.id)} data-testid={`restart-btn-${journey.id}`}>
+                                <Plus className="w-3 h-3 mr-1" /> Restart
+                              </Button>
+                            ) : (
+                              <Button size="sm" variant="outline" className="text-xs h-7 flex-1 text-warning border-warning/30 hover:bg-warning/10" onClick={() => handlePauseJourney(journey.id)} data-testid={`pause-btn-${journey.id}`}>
+                                <Clock className="w-3 h-3 mr-1" /> Pause
+                              </Button>
+                            )}
                           </div>
                         </div>
                       );

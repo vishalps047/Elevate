@@ -18,7 +18,7 @@ async def create_request(body: CreateRequestBody, user: dict = Depends(get_curre
     active = await db.coaching_requests.find_one({
         "coachee_id": user["id"],
         "$or": [
-            {"status": {"$in": ["pending", "accepted"]}},
+            {"status": {"$in": ["pending", "accepted", "paused"]}},
             {"status": "completed", "feedback_submitted": False},
         ],
     })
@@ -111,7 +111,7 @@ async def get_active_request(user: dict = Depends(get_current_user)):
         {
             "coachee_id": user["id"],
             "$or": [
-                {"status": {"$in": ["pending", "accepted"]}},
+                {"status": {"$in": ["pending", "accepted", "paused"]}},
                 {"status": "completed", "feedback_submitted": False},
             ],
         },
@@ -317,6 +317,64 @@ async def submit_feedback(request_id: str, body: FeedbackBody, user: dict = Depe
     )
 
     return feedback_doc
+
+
+@router.put("/{request_id}/pause")
+async def pause_journey(request_id: str, user: dict = Depends(get_current_user)):
+    if user["role"] != "coach":
+        raise HTTPException(status_code=403, detail="Only coaches can pause journeys")
+
+    request = await db.coaching_requests.find_one({"id": request_id}, {"_id": 0})
+    if not request:
+        raise HTTPException(status_code=404, detail="Request not found")
+    if request.get("active_coach_id") != user["id"]:
+        raise HTTPException(status_code=403, detail="Not your coaching engagement")
+    if request["status"] != "accepted":
+        raise HTTPException(status_code=400, detail="Can only pause active journeys")
+
+    await db.coaching_requests.update_one(
+        {"id": request_id},
+        {"$set": {"status": "paused"}},
+    )
+
+    await create_notification(
+        request["coachee_id"],
+        "system",
+        "Coaching Journey Paused",
+        f"{user['name']} has paused your coaching journey. Session scheduling is temporarily disabled.",
+        user.get("avatar"),
+    )
+
+    return {"message": "Journey paused"}
+
+
+@router.put("/{request_id}/restart")
+async def restart_journey(request_id: str, user: dict = Depends(get_current_user)):
+    if user["role"] != "coach":
+        raise HTTPException(status_code=403, detail="Only coaches can restart journeys")
+
+    request = await db.coaching_requests.find_one({"id": request_id}, {"_id": 0})
+    if not request:
+        raise HTTPException(status_code=404, detail="Request not found")
+    if request.get("active_coach_id") != user["id"]:
+        raise HTTPException(status_code=403, detail="Not your coaching engagement")
+    if request["status"] != "paused":
+        raise HTTPException(status_code=400, detail="Can only restart paused journeys")
+
+    await db.coaching_requests.update_one(
+        {"id": request_id},
+        {"$set": {"status": "accepted"}},
+    )
+
+    await create_notification(
+        request["coachee_id"],
+        "system",
+        "Coaching Journey Resumed",
+        f"{user['name']} has resumed your coaching journey. You can now schedule sessions again.",
+        user.get("avatar"),
+    )
+
+    return {"message": "Journey restarted"}
 
 
 @router.put("/{request_id}/total-sessions")
