@@ -21,7 +21,7 @@ Role-based digital coaching platform for Grant Thornton, connecting employees (C
 │   └── routes/
 │       ├── auth.py            # Login, JWT, get_current_user
 │       ├── coaches.py         # List coaches + availability CRUD
-│       ├── requests.py        # Coaching requests + accept/decline/complete/feedback/edit-sessions
+│       ├── requests.py        # Coaching requests + accept/decline/complete/feedback/pause/restart
 │       ├── sessions.py        # Session CRUD with availability checking + reminders
 │       └── notifications.py   # Notifications read/read-all
 └── frontend/src/
@@ -49,6 +49,9 @@ Role-based digital coaching platform for Grant Thornton, connecting employees (C
 8. **Notification System** - real-time via polling (15s), auto-created on key events
 9. **Background Reminder Task** - checks every 60s for due session reminders
 10. **Rating Visibility** - admin only
+11. **Pause/Restart Journey** - coaches can pause/restart active journeys, coachees notified + scheduling disabled when paused
+12. **Sessions Completed Stat** - shows cumulative count across all journeys (past + current)
+13. **Uniform Coach Cards** - consistent card height/alignment on coaches page
 
 ## Completed Work
 - Full frontend prototype (Done)
@@ -63,6 +66,9 @@ Role-based digital coaching platform for Grant Thornton, connecting employees (C
 - Past sessions in seed data (Done)
 - Session reminders (2d, 1d, 1h before) (Done)
 - Bug fix: session progress scoped to active request (Done)
+- **Coach Card UI fix: uniform height cards** (Done - Feb 2026)
+- **Pause/Restart Journey feature** (Done - Feb 2026)
+- **Sessions Completed stat includes all journeys** (Done - Feb 2026)
 
 ## Upcoming Tasks (P1)
 - Admin Dashboard: Replace mock data with real API calls
