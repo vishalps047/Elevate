@@ -52,6 +52,7 @@ Role-based digital coaching platform for Grant Thornton, connecting employees (C
 11. **Pause/Restart Journey** - coaches can pause/restart active journeys, coachees notified + scheduling disabled when paused
 12. **Sessions Completed Stat** - shows cumulative count across all journeys (past + current)
 13. **Uniform Coach Cards** - consistent card height/alignment on coaches page
+14. **Detailed Feedback Form** - 5-question structured form: Q1 overall rating, Q2 coach rating, Q3 learning outcomes (4 sub-items), Q4 most valuable (text), Q5 suggestions (optional text)
 
 ## Completed Work
 - Full frontend prototype (Done)
@@ -69,6 +70,8 @@ Role-based digital coaching platform for Grant Thornton, connecting employees (C
 - **Coach Card UI fix: uniform height cards** (Done - Feb 2026)
 - **Pause/Restart Journey feature** (Done - Feb 2026)
 - **Sessions Completed stat includes all journeys** (Done - Feb 2026)
+
+- **Detailed Coachee Feedback Form (Q1-Q5)** (Done - Feb 2026)
 
 ## Upcoming Tasks (P1)
 - Admin Dashboard: Replace mock data with real API calls
