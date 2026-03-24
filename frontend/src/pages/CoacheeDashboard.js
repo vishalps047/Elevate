@@ -39,6 +39,36 @@ function StatCard({ icon: Icon, value, label, sub, color = 'primary' }) {
   );
 }
 
+const ratingLabels = ['', 'Poor', 'Fair', 'Good', 'Very Good', 'Excellent'];
+
+function FeedbackRatingQuestion({ number, label, mandatory, value, hovered, onHover, onChange, testId }) {
+  return (
+    <div className="mb-5">
+      <p className="text-sm font-semibold text-foreground mb-2">
+        <span className="text-primary font-bold mr-1.5">{number}.</span>
+        {label} {mandatory && <span className="text-destructive">*</span>}
+      </p>
+      <div className="flex items-center gap-2">
+        {[1, 2, 3, 4, 5].map(star => (
+          <button
+            key={star}
+            data-testid={`${testId}-star-${star}`}
+            onMouseEnter={() => onHover(star)}
+            onMouseLeave={() => onHover(0)}
+            onClick={() => onChange(star)}
+            className="transition-fast"
+          >
+            <svg className={`w-7 h-7 transition-fast ${star <= (hovered || value) ? 'fill-warning text-warning scale-110' : 'fill-muted text-muted-foreground'}`} viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1">
+              <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+            </svg>
+          </button>
+        ))}
+        {(hovered || value) > 0 && <span className="text-xs font-medium text-warning ml-1">{ratingLabels[hovered || value]}</span>}
+      </div>
+    </div>
+  );
+}
+
 export default function CoacheeDashboard() {
   const { user, fetchNotifications } = useApp();
   const navigate = useNavigate();
@@ -48,8 +78,15 @@ export default function CoacheeDashboard() {
   const [scheduleModal, setScheduleModal] = useState({ open: false });
   const [rescheduleModal, setRescheduleModal] = useState({ open: false, session: null });
   const [completingJourney, setCompletingJourney] = useState(false);
-  const [feedbackState, setFeedbackState] = useState({ rating: 0, comment: '', submitting: false });
-  const [hoveredStar, setHoveredStar] = useState(0);
+  const [feedbackState, setFeedbackState] = useState({
+    overall_rating: 0,
+    coach_rating: 0,
+    learning_outcomes: { self_awareness: 0, experimental: 0, goals: 0, go_beyond: 0 },
+    most_valuable: '',
+    suggestions: '',
+    submitting: false,
+  });
+  const [hoveredStars, setHoveredStars] = useState({});
 
   const loadData = async () => {
     setLoading(true);
@@ -96,12 +133,23 @@ export default function CoacheeDashboard() {
   };
 
   const handleFeedback = async () => {
-    if (feedbackState.rating === 0) { toast.error('Please select a rating'); return; }
+    const { overall_rating, coach_rating, learning_outcomes, most_valuable } = feedbackState;
+    if (overall_rating === 0) { toast.error('Please rate your overall experience (Q1)'); return; }
+    if (coach_rating === 0) { toast.error('Please rate your coach (Q2)'); return; }
+    const outcomes = Object.values(learning_outcomes);
+    if (outcomes.some(v => v === 0)) { toast.error('Please rate all learning journey outcomes (Q3)'); return; }
+    if (!most_valuable.trim()) { toast.error('Please share what you found most valuable (Q4)'); return; }
     setFeedbackState(s => ({ ...s, submitting: true }));
     try {
-      await api.submitFeedback(activeRequest.id, { rating: feedbackState.rating, comment: feedbackState.comment });
+      await api.submitFeedback(activeRequest.id, {
+        overall_rating,
+        coach_rating,
+        learning_outcomes,
+        most_valuable: most_valuable.trim(),
+        suggestions: feedbackState.suggestions.trim(),
+      });
       toast.success('Feedback submitted! You can now find a new coach.');
-      setFeedbackState({ rating: 0, comment: '', submitting: false });
+      setFeedbackState({ overall_rating: 0, coach_rating: 0, learning_outcomes: { self_awareness: 0, experimental: 0, goals: 0, go_beyond: 0 }, most_valuable: '', suggestions: '', submitting: false });
       await loadData();
     } catch (e) {
       toast.error(e.message);
@@ -130,8 +178,6 @@ export default function CoacheeDashboard() {
       toast.error(e.message);
     }
   };
-
-  const ratingLabels = ['', 'Poor', 'Fair', 'Good', 'Very Good', 'Excellent'];
 
   if (loading) {
     return (
@@ -181,34 +227,107 @@ export default function CoacheeDashboard() {
         {needsFeedback && (
           <Card className="shadow-card mb-6 border-warning/30" data-testid="feedback-card">
             <CardContent className="p-6">
-              <div className="flex items-start gap-3 mb-4">
+              <div className="flex items-start gap-3 mb-5">
                 <AlertCircle className="w-5 h-5 text-warning flex-shrink-0 mt-0.5" />
                 <div>
-                  <p className="text-sm font-semibold text-foreground">Journey Complete - Feedback Required</p>
+                  <p className="text-base font-heading font-bold text-foreground">Elevate | Coachee Feedback Form</p>
                   <p className="text-xs text-muted-foreground mt-0.5">
                     You completed {completedSessions.length} session{completedSessions.length !== 1 ? 's' : ''} out of {totalSessions}. Submit feedback to unlock the ability to find a new coach.
                   </p>
                 </div>
               </div>
-              <div className="mb-4">
-                <label className="text-sm font-semibold mb-2 block">How was your coaching experience?</label>
-                <div className="flex items-center gap-2">
-                  {[1, 2, 3, 4, 5].map(star => (
-                    <button key={star} onMouseEnter={() => setHoveredStar(star)} onMouseLeave={() => setHoveredStar(0)} onClick={() => setFeedbackState(s => ({ ...s, rating: star }))} className="transition-fast">
-                      <svg className={`w-8 h-8 transition-fast ${star <= (hoveredStar || feedbackState.rating) ? 'fill-warning text-warning scale-110' : 'fill-muted text-muted-foreground'}`} viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1">
-                        <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
-                      </svg>
-                    </button>
+
+              {/* Q1 - Overall Experience */}
+              <FeedbackRatingQuestion
+                number="Q1"
+                label="Please rate your overall experience of the learning journey"
+                mandatory
+                value={feedbackState.overall_rating}
+                hovered={hoveredStars.q1 || 0}
+                onHover={(v) => setHoveredStars(s => ({ ...s, q1: v }))}
+                onChange={(v) => setFeedbackState(s => ({ ...s, overall_rating: v }))}
+                testId="q1-overall"
+              />
+
+              {/* Q2 - Coach Rating */}
+              <FeedbackRatingQuestion
+                number="Q2"
+                label="Please rate your coach on - knowledge, guidance and engagement"
+                mandatory
+                value={feedbackState.coach_rating}
+                hovered={hoveredStars.q2 || 0}
+                onHover={(v) => setHoveredStars(s => ({ ...s, q2: v }))}
+                onChange={(v) => setFeedbackState(s => ({ ...s, coach_rating: v }))}
+                testId="q2-coach"
+              />
+
+              {/* Q3 - Learning Outcomes */}
+              <div className="mb-5">
+                <p className="text-sm font-semibold text-foreground mb-1">
+                  <span className="text-primary font-bold mr-1.5">Q3.</span>
+                  Did the learning journey help you to: <span className="text-destructive">*</span>
+                </p>
+                <div className="space-y-3 mt-3 pl-1">
+                  {[
+                    { key: 'self_awareness', label: 'Deepen your self-awareness and maximise your potential' },
+                    { key: 'experimental', label: 'Be experimental and embrace new ways of doing things' },
+                    { key: 'goals', label: 'Achieve your professional and personal goals' },
+                    { key: 'go_beyond', label: '#GoBeyond to achieve more than you thought possible' },
+                  ].map(({ key, label }, idx) => (
+                    <div key={key} className="flex items-center gap-3 bg-muted/30 rounded-xl p-3 border border-border">
+                      <span className="text-xs font-semibold text-muted-foreground w-4 flex-shrink-0">{String.fromCharCode(97 + idx)})</span>
+                      <p className="text-xs text-foreground flex-1 min-w-0">{label}</p>
+                      <div className="flex items-center gap-1 flex-shrink-0">
+                        {[1, 2, 3, 4, 5].map(star => (
+                          <button
+                            key={star}
+                            data-testid={`q3-${key}-star-${star}`}
+                            onMouseEnter={() => setHoveredStars(s => ({ ...s, [key]: star }))}
+                            onMouseLeave={() => setHoveredStars(s => ({ ...s, [key]: 0 }))}
+                            onClick={() => setFeedbackState(s => ({ ...s, learning_outcomes: { ...s.learning_outcomes, [key]: star } }))}
+                            className="transition-fast"
+                          >
+                            <svg className={`w-5 h-5 transition-fast ${star <= (hoveredStars[key] || feedbackState.learning_outcomes[key]) ? 'fill-warning text-warning scale-110' : 'fill-muted text-muted-foreground'}`} viewBox="0 0 24 24" stroke="currentColor" strokeWidth="1">
+                              <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+                            </svg>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
                   ))}
-                  {(hoveredStar || feedbackState.rating) > 0 && <span className="text-sm font-medium text-warning ml-1">{ratingLabels[hoveredStar || feedbackState.rating]}</span>}
                 </div>
               </div>
-              <textarea
-                className="w-full rounded-xl border border-border bg-muted/50 p-3 text-sm resize-none min-h-[70px] focus:outline-none focus:ring-2 focus:ring-primary/30 mb-4"
-                placeholder="Share your thoughts about the coaching experience..."
-                value={feedbackState.comment}
-                onChange={e => setFeedbackState(s => ({ ...s, comment: e.target.value }))}
-              />
+
+              {/* Q4 - Most Valuable */}
+              <div className="mb-5">
+                <p className="text-sm font-semibold text-foreground mb-2">
+                  <span className="text-primary font-bold mr-1.5">Q4.</span>
+                  What did you find most valuable about your learning journey? <span className="text-destructive">*</span>
+                </p>
+                <textarea
+                  data-testid="q4-most-valuable"
+                  className="w-full rounded-xl border border-border bg-muted/50 p-3 text-sm resize-none min-h-[80px] focus:outline-none focus:ring-2 focus:ring-primary/30"
+                  placeholder="Share what was most impactful..."
+                  value={feedbackState.most_valuable}
+                  onChange={e => setFeedbackState(s => ({ ...s, most_valuable: e.target.value }))}
+                />
+              </div>
+
+              {/* Q5 - Suggestions */}
+              <div className="mb-5">
+                <p className="text-sm font-semibold text-foreground mb-2">
+                  <span className="text-primary font-bold mr-1.5">Q5.</span>
+                  Would you like to share any suggestions/recommendations? <span className="text-xs text-muted-foreground ml-1">(Optional)</span>
+                </p>
+                <textarea
+                  data-testid="q5-suggestions"
+                  className="w-full rounded-xl border border-border bg-muted/50 p-3 text-sm resize-none min-h-[70px] focus:outline-none focus:ring-2 focus:ring-primary/30"
+                  placeholder="Any suggestions to improve the experience..."
+                  value={feedbackState.suggestions}
+                  onChange={e => setFeedbackState(s => ({ ...s, suggestions: e.target.value }))}
+                />
+              </div>
+
               <Button className="bg-primary hover:bg-primary/90 text-white" onClick={handleFeedback} disabled={feedbackState.submitting} data-testid="submit-feedback-btn">
                 {feedbackState.submitting ? 'Submitting...' : 'Submit Feedback'}
                 <Send className="w-4 h-4 ml-2" />

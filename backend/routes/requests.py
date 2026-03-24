@@ -303,8 +303,11 @@ async def submit_feedback(request_id: str, body: FeedbackBody, user: dict = Depe
         "request_id": request_id,
         "coachee_id": user["id"],
         "coach_id": request.get("active_coach_id"),
-        "rating": body.rating,
-        "comment": body.comment,
+        "overall_rating": body.overall_rating,
+        "coach_rating": body.coach_rating,
+        "learning_outcomes": body.learning_outcomes.model_dump(),
+        "most_valuable": body.most_valuable,
+        "suggestions": body.suggestions,
         "created_at": datetime.now(timezone.utc).isoformat(),
     }
 

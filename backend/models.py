@@ -33,9 +33,19 @@ class RescheduleBody(BaseModel):
     time: str
 
 
+class LearningOutcomes(BaseModel):
+    self_awareness: int
+    experimental: int
+    goals: int
+    go_beyond: int
+
+
 class FeedbackBody(BaseModel):
-    rating: int
-    comment: Optional[str] = ""
+    overall_rating: int
+    coach_rating: int
+    learning_outcomes: LearningOutcomes
+    most_valuable: str
+    suggestions: Optional[str] = ""
 
 
 class UpdateTotalSessions(BaseModel):
