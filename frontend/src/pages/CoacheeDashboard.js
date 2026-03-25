@@ -179,6 +179,16 @@ export default function CoacheeDashboard() {
     }
   };
 
+  const handleCompleteSession = async (session) => {
+    try {
+      await api.completeSession(session.id);
+      toast.success(`Session marked as completed`);
+      await loadData();
+    } catch (e) {
+      toast.error(e.message);
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -476,7 +486,7 @@ export default function CoacheeDashboard() {
                 </div>
                 <div className="space-y-3">
                   {upcomingSessions.length > 0 ? upcomingSessions.map(s => (
-                    <SessionCard key={s.id} session={s} role="coachee" onReschedule={(s) => setRescheduleModal({ open: true, session: s })} />
+                    <SessionCard key={s.id} session={s} role="coachee" onReschedule={(s) => setRescheduleModal({ open: true, session: s })} onComplete={handleCompleteSession} />
                   )) : (
                     <div className="text-center py-8">
                       <Calendar className="w-10 h-10 text-muted-foreground mx-auto mb-2 opacity-40" />

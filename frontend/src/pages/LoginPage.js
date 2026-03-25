@@ -5,7 +5,7 @@ import { Card, CardContent } from '../components/ui/card';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { useApp } from '../context/AppContext';
-import { Shield, TrendingUp, Award, Users, ChevronRight, Lock, Mail, AlertCircle } from 'lucide-react';
+import { Shield, TrendingUp, Award, Users, ChevronRight, Lock, Mail, AlertCircle, Building2 } from 'lucide-react';
 import { toast } from 'sonner';
 
 export default function LoginPage() {
@@ -103,6 +103,27 @@ export default function LoginPage() {
             <CardContent className="p-6">
               <h2 className="font-heading font-bold text-lg text-foreground mb-1">Sign In</h2>
               <p className="text-muted-foreground text-sm mb-6">Enter your credentials to access the platform</p>
+
+              {/* SSO Placeholder */}
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full mb-4 h-11 gap-2 border-border hover:bg-muted/50"
+                onClick={() => toast.info('Organisation SSO login (Outlook) coming soon.')}
+                data-testid="sso-login-btn"
+              >
+                <Building2 className="w-4 h-4 text-primary" />
+                <span className="text-sm">Sign in with Organisation (SSO)</span>
+              </Button>
+
+              <div className="relative mb-4">
+                <div className="absolute inset-0 flex items-center">
+                  <span className="w-full border-t border-border" />
+                </div>
+                <div className="relative flex justify-center text-xs uppercase">
+                  <span className="bg-card px-2 text-muted-foreground">or continue with email</span>
+                </div>
+              </div>
 
               <form onSubmit={handleLogin} className="space-y-4">
                 <div>

@@ -53,7 +53,7 @@ async def schedule_session_reminders(session_doc):
                 "session_id": session_doc["id"],
                 "deliver_at": deliver_at.isoformat(),
                 "delivered": False,
-                "title": f"Session Reminder",
+                "title": "Session Reminder",
                 "message": f"Your coaching session with {other_name} is {r['label']} ({session_doc['date']} at {session_doc['time']})",
                 "avatar": None,
             }
@@ -84,3 +84,26 @@ async def deliver_due_reminders():
 
     if due:
         logger.info(f"Delivered {len(due)} reminder notifications")
+
+
+async def auto_complete_past_sessions():
+    """Auto-mark sessions as completed if their scheduled time has passed."""
+    now = datetime.now(timezone.utc)
+    upcoming = await db.sessions.find({"status": "upcoming"}).to_list(200)
+
+    completed_count = 0
+    for session in upcoming:
+        try:
+            session_dt = parse_session_datetime(session["date"], session["time"])
+            # Add 1 hour for session duration before auto-completing
+            if now > session_dt + timedelta(hours=1):
+                await db.sessions.update_one(
+                    {"id": session["id"]},
+                    {"$set": {"status": "completed"}},
+                )
+                completed_count += 1
+        except Exception:
+            continue
+
+    if completed_count:
+        logger.info(f"Auto-completed {completed_count} past sessions")

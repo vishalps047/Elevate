@@ -1,12 +1,12 @@
 from database import db
-import hashlib
+import bcrypt
 import logging
 
 logger = logging.getLogger(__name__)
 
 
 def hash_password(password):
-    return hashlib.sha256(password.encode()).hexdigest()
+    return bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
 
 
 async def seed_database():
@@ -179,8 +179,16 @@ async def seed_database():
             "request_id": "past-request-1",
             "coachee_id": "coachee-1",
             "coach_id": "coach-3",
-            "rating": 5,
-            "comment": "Gaurav was an exceptional coach. His structured approach helped me develop strong leadership presence and stakeholder management skills.",
+            "overall_rating": 5,
+            "coach_rating": 5,
+            "learning_outcomes": {
+                "self_awareness": 5,
+                "experimental": 4,
+                "goals": 5,
+                "go_beyond": 4,
+            },
+            "most_valuable": "Gaurav's structured approach helped me develop strong leadership presence and stakeholder management skills.",
+            "suggestions": "More role-play exercises would be beneficial.",
             "created_at": "2026-01-20T10:00:00+00:00",
         }
         await db.feedback.insert_one(past_feedback)

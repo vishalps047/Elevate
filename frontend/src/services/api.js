@@ -71,6 +71,13 @@ class ApiService {
   rescheduleSession(id, data) { return this.request(`/api/sessions/${id}/reschedule`, { method: 'PUT', body: JSON.stringify(data) }); }
   completeSession(id) { return this.request(`/api/sessions/${id}/complete`, { method: 'PUT' }); }
 
+  // Admin
+  getAdminStats() { return this.request('/api/admin/stats'); }
+  getAdminCoaches() { return this.request('/api/admin/coaches'); }
+  getAdminCoachees() { return this.request('/api/admin/coachees'); }
+  getAdminUserHistory(userId) { return this.request(`/api/admin/users/${userId}/history`); }
+  getAdminTrends() { return this.request('/api/admin/trends'); }
+
   // Notifications
   getNotifications() { return this.request('/api/notifications'); }
   markRead(id) { return this.request(`/api/notifications/${id}/read`, { method: 'PUT' }); }

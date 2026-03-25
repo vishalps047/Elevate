@@ -1,313 +1,516 @@
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
+import { api } from '../services/api';
+import { useApp } from '../context/AppContext';
+import PageHeader from '../components/PageHeader';
 import { Card, CardContent } from '../components/ui/card';
-import { Button } from '../components/ui/button';
+import { Avatar, AvatarImage, AvatarFallback } from '../components/ui/avatar';
 import { Badge } from '../components/ui/badge';
-import { Avatar, AvatarFallback, AvatarImage } from '../components/ui/avatar';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
+import { Button } from '../components/ui/button';
+import { Progress } from '../components/ui/progress';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../components/ui/dialog';
 import {
-  BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid,
-  Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend
-} from 'recharts';
-import {
-  Users, Calendar, TrendingUp, Star, ChevronRight,
-  CheckCircle, XCircle, Clock, AlertTriangle, UserCheck,
-  BarChart2, FileText, Download, Eye
+  Users, Calendar, TrendingUp, Award, Clock, CheckCircle, BarChart3,
+  ChevronRight, Star, ArrowLeft, Pause, AlertCircle, BookOpen, Eye
 } from 'lucide-react';
-import PageHeader from '../components/PageHeader';
-import { mockAdminStats, mockPendingCoaches } from '../data/mockData';
 import { toast } from 'sonner';
+import {
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+  PieChart, Pie, Cell, LineChart, Line, Legend
+} from 'recharts';
 
-function StatCard({ icon: Icon, value, label, sub, trend, color = 'primary' }) {
-  const colorMap = {
-    primary: 'bg-primary-subtle text-primary',
-    accent: 'bg-accent-subtle text-accent',
-    warning: 'bg-yellow-50 text-warning',
-    success: 'bg-green-50 text-success',
-    destructive: 'bg-red-50 text-destructive',
+const CHART_COLORS = ['hsl(271, 65%, 28%)', 'hsl(142, 71%, 42%)', 'hsl(35, 92%, 55%)', 'hsl(352, 83%, 55%)', 'hsl(200, 65%, 50%)', 'hsl(280, 50%, 55%)'];
+
+function StatCard({ icon: Icon, value, label, color = 'primary', sub }) {
+  const colors = {
+    primary: 'bg-primary/10 text-primary',
+    success: 'bg-success/10 text-success',
+    warning: 'bg-warning/10 text-warning',
+    accent: 'bg-accent/10 text-accent',
+    destructive: 'bg-destructive/10 text-destructive',
   };
   return (
-    <Card className="shadow-card hover:shadow-md transition-smooth">
-      <CardContent className="p-5">
-        <div className="flex items-start justify-between">
-          <div>
-            <p className="text-2xl font-heading font-bold text-foreground">{value}</p>
-            <p className="text-sm font-medium text-foreground/80 mt-0.5">{label}</p>
-            {sub && <p className="text-xs text-muted-foreground mt-1">{sub}</p>}
-            {trend && (
-              <div className="flex items-center gap-1 mt-1">
-                <TrendingUp className="w-3 h-3 text-success" />
-                <span className="text-xs text-success font-medium">{trend}</span>
-              </div>
-            )}
-          </div>
-          <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${colorMap[color]}`}>
-            <Icon className="w-5 h-5" />
-          </div>
+    <Card className="shadow-card" data-testid={`stat-${label.toLowerCase().replace(/\s+/g,'-')}`}>
+      <CardContent className="p-4 flex items-center gap-3">
+        <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${colors[color]}`}>
+          <Icon className="w-5 h-5" />
+        </div>
+        <div>
+          <p className="text-xl font-heading font-bold text-foreground">{value}</p>
+          <p className="text-xs text-muted-foreground">{label}</p>
+          {sub && <p className="text-xs text-muted-foreground/70">{sub}</p>}
         </div>
       </CardContent>
     </Card>
   );
 }
 
-const CHART_COLORS = [
-  'hsl(271 65% 45%)',
-  'hsl(181 65% 38%)',
-  'hsl(38 92% 50%)',
-  'hsl(142 71% 40%)',
-  'hsl(0 72% 51%)',
-];
-
 export default function AdminDashboard() {
-  const [pendingCoaches, setPendingCoaches] = useState(mockPendingCoaches);
-  const [reviewingCoach, setReviewingCoach] = useState(null);
+  const { user } = useApp();
+  const [stats, setStats] = useState(null);
+  const [coaches, setCoaches] = useState([]);
+  const [coachees, setCoachees] = useState([]);
+  const [trends, setTrends] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState('overview');
+  const [userModal, setUserModal] = useState({ open: false, data: null, loading: false });
 
-  const handleApprove = (id) => {
-    setPendingCoaches(prev => prev.filter(c => c.id !== id));
-    toast.success('Coach approved successfully!', { description: 'Profile is now active and visible to coachees.' });
-    setReviewingCoach(null);
+  const loadData = useCallback(async () => {
+    try {
+      const [s, c, ce, t] = await Promise.all([
+        api.getAdminStats(),
+        api.getAdminCoaches(),
+        api.getAdminCoachees(),
+        api.getAdminTrends(),
+      ]);
+      setStats(s);
+      setCoaches(c);
+      setCoachees(ce);
+      setTrends(t);
+    } catch (e) {
+      toast.error(e.message);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { loadData(); }, [loadData]);
+
+  const openUserHistory = async (userId) => {
+    setUserModal({ open: true, data: null, loading: true });
+    try {
+      const data = await api.getAdminUserHistory(userId);
+      setUserModal({ open: true, data, loading: false });
+    } catch (e) {
+      toast.error(e.message);
+      setUserModal({ open: false, data: null, loading: false });
+    }
   };
-  const handleReject = (id) => {
-    setPendingCoaches(prev => prev.filter(c => c.id !== id));
-    toast.info('Coach application rejected.');
-    setReviewingCoach(null);
-  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full" />
+      </div>
+    );
+  }
+
+  const topCoaches = [...coaches].filter(c => c.feedback_rating).sort((a, b) => b.feedback_rating - a.feedback_rating);
 
   return (
-    <div className="min-h-screen bg-background">
-      <PageHeader
-        title="Admin Dashboard"
-        subtitle="Platform overview and management"
-      >
-        <Button variant="outline" size="sm" className="text-white border-white/30 hover:bg-white/10 text-xs h-8 gap-1.5">
-          <Download className="w-3.5 h-3.5" /> Export Report
-        </Button>
-      </PageHeader>
-
+    <div className="min-h-screen bg-background" data-testid="admin-dashboard">
+      <PageHeader title="Admin Dashboard" />
       <div className="max-w-screen-xl mx-auto px-4 lg:px-8 py-6">
+        {/* Welcome */}
+        <div className="mb-6">
+          <h2 className="font-heading font-bold text-xl text-foreground">Platform Overview</h2>
+          <p className="text-sm text-muted-foreground">Real-time coaching platform analytics and management</p>
+        </div>
+
         {/* Stats Row */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-          <StatCard icon={Calendar} value={mockAdminStats.totalSessions} label="Total Sessions" trend="+12% this month" color="primary" />
-          <StatCard icon={Users} value={mockAdminStats.activeCoaches} label="Active Coaches" sub="3 pending approval" color="accent" />
-          <StatCard icon={UserCheck} value={mockAdminStats.activeCoachees} label="Active Coachees" color="success" />
-          <StatCard icon={Clock} value={mockAdminStats.pendingRequests} label="Pending Requests" sub="Awaiting coach action" color="warning" />
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 mb-8">
+          <StatCard icon={Users} value={stats?.total_coaches} label="Total Coaches" color="primary" />
+          <StatCard icon={Users} value={stats?.total_coachees} label="Total Coachees" color="accent" />
+          <StatCard icon={Calendar} value={stats?.total_sessions} label="Total Sessions" color="success" />
+          <StatCard icon={Clock} value={stats?.pending_requests} label="Pending Requests" color="warning" />
+          <StatCard icon={Star} value={stats?.avg_rating || '-'} label="Avg Rating" color="primary" sub="From feedback" />
         </div>
 
+        {/* Secondary Stats */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
-          <StatCard icon={BarChart2} value={`${mockAdminStats.completionRate}%`} label="Completion Rate" trend="+3% vs last month" color="success" />
-          <StatCard icon={Star} value={mockAdminStats.avgRating} label="Avg Session Rating" color="warning" />
-          <StatCard icon={TrendingUp} value={mockAdminStats.activeSessions} label="Active Programs" color="primary" />
-          <StatCard icon={AlertTriangle} value={pendingCoaches.length} label="Coach Approvals" sub="Need review" color="destructive" />
+          <StatCard icon={CheckCircle} value={stats?.completed_sessions} label="Completed Sessions" color="success" />
+          <StatCard icon={TrendingUp} value={stats?.active_journeys} label="Active Journeys" color="primary" />
+          <StatCard icon={Pause} value={stats?.paused_journeys} label="Paused Journeys" color="warning" />
+          <StatCard icon={Award} value={`${stats?.completion_rate}%`} label="Completion Rate" color="accent" />
         </div>
 
-        {/* Charts */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-          {/* Sessions Over Time */}
-          <Card className="shadow-card">
-            <CardContent className="p-5">
-              <h3 className="font-heading font-semibold text-foreground mb-4">Sessions Over Time</h3>
-              <ResponsiveContainer width="100%" height={200}>
-                <LineChart data={mockAdminStats.sessionsTrend}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                  <XAxis dataKey="month" tick={{ fontSize: 12, fill: 'hsl(var(--muted-foreground))' }} />
-                  <YAxis tick={{ fontSize: 12, fill: 'hsl(var(--muted-foreground))' }} />
-                  <Tooltip contentStyle={{ background: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: '8px', fontSize: '12px' }} />
-                  <Line type="monotone" dataKey="sessions" stroke="hsl(271 65% 45%)" strokeWidth={2} dot={{ fill: 'hsl(271 65% 45%)', r: 4 }} />
-                </LineChart>
-              </ResponsiveContainer>
-            </CardContent>
-          </Card>
+        {/* Tabs */}
+        <div className="flex gap-2 mb-6 border-b border-border pb-3 overflow-x-auto">
+          {[
+            { key: 'overview', label: 'Charts & Trends', icon: BarChart3 },
+            { key: 'coaches', label: 'Coaches', icon: Award },
+            { key: 'coachees', label: 'Coachees', icon: Users },
+          ].map(t => (
+            <Button
+              key={t.key}
+              variant={activeTab === t.key ? 'default' : 'ghost'}
+              className={`text-sm h-9 ${activeTab === t.key ? 'bg-primary text-white' : ''}`}
+              onClick={() => setActiveTab(t.key)}
+              data-testid={`tab-${t.key}`}
+            >
+              <t.icon className="w-4 h-4 mr-1.5" /> {t.label}
+            </Button>
+          ))}
+        </div>
 
-          {/* Request Trends */}
-          <Card className="shadow-card">
-            <CardContent className="p-5">
-              <h3 className="font-heading font-semibold text-foreground mb-4">Request Acceptance Trends</h3>
-              <ResponsiveContainer width="100%" height={200}>
-                <BarChart data={mockAdminStats.requestTrend}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                  <XAxis dataKey="month" tick={{ fontSize: 12, fill: 'hsl(var(--muted-foreground))' }} />
-                  <YAxis tick={{ fontSize: 12, fill: 'hsl(var(--muted-foreground))' }} />
-                  <Tooltip contentStyle={{ background: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: '8px', fontSize: '12px' }} />
-                  <Bar dataKey="accepted" fill="hsl(181 65% 38%)" radius={[4, 4, 0, 0]} />
-                  <Bar dataKey="declined" fill="hsl(0 72% 51%)" radius={[4, 4, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
-            </CardContent>
-          </Card>
+        {/* Overview Tab - Charts */}
+        {activeTab === 'overview' && (
+          <div className="space-y-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Coach Utilization */}
+              <Card className="shadow-card">
+                <CardContent className="p-5">
+                  <h3 className="font-heading font-semibold text-sm text-foreground mb-4">Coach Utilization (Sessions per Coach)</h3>
+                  {trends?.coach_utilization?.length > 0 ? (
+                    <ResponsiveContainer width="100%" height={260}>
+                      <BarChart data={trends.coach_utilization}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                        <XAxis dataKey="name" tick={{ fontSize: 11 }} />
+                        <YAxis tick={{ fontSize: 11 }} />
+                        <Tooltip contentStyle={{ borderRadius: '8px', fontSize: '12px' }} />
+                        <Bar dataKey="sessions" fill="hsl(271, 65%, 28%)" radius={[4, 4, 0, 0]} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  ) : (
+                    <div className="h-64 flex items-center justify-center text-sm text-muted-foreground">No session data yet</div>
+                  )}
+                </CardContent>
+              </Card>
 
-          {/* Expertise Distribution */}
-          <Card className="shadow-card">
-            <CardContent className="p-5">
-              <h3 className="font-heading font-semibold text-foreground mb-4">Expertise Distribution</h3>
-              <ResponsiveContainer width="100%" height={200}>
-                <PieChart>
-                  <Pie
-                    data={mockAdminStats.expertiseDistribution}
-                    cx="50%" cy="50%"
-                    innerRadius={55} outerRadius={80}
-                    dataKey="value"
-                    paddingAngle={3}
-                  >
-                    {mockAdminStats.expertiseDistribution.map((_, i) => (
-                      <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />
+              {/* Requests Trends */}
+              <Card className="shadow-card">
+                <CardContent className="p-5">
+                  <h3 className="font-heading font-semibold text-sm text-foreground mb-4">Request Trends Over Time</h3>
+                  {trends?.requests_by_month?.length > 0 ? (
+                    <ResponsiveContainer width="100%" height={260}>
+                      <LineChart data={trends.requests_by_month}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                        <XAxis dataKey="month" tick={{ fontSize: 11 }} />
+                        <YAxis tick={{ fontSize: 11 }} />
+                        <Tooltip contentStyle={{ borderRadius: '8px', fontSize: '12px' }} />
+                        <Legend wrapperStyle={{ fontSize: '11px' }} />
+                        <Line type="monotone" dataKey="total" stroke="hsl(271, 65%, 28%)" name="Submitted" strokeWidth={2} dot={{ r: 3 }} />
+                        <Line type="monotone" dataKey="completed" stroke="hsl(142, 71%, 42%)" name="Completed" strokeWidth={2} dot={{ r: 3 }} />
+                      </LineChart>
+                    </ResponsiveContainer>
+                  ) : (
+                    <div className="h-64 flex items-center justify-center text-sm text-muted-foreground">No trend data yet</div>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Session Trend */}
+              <Card className="shadow-card">
+                <CardContent className="p-5">
+                  <h3 className="font-heading font-semibold text-sm text-foreground mb-4">Sessions Over Time</h3>
+                  {trends?.sessions_by_month?.length > 0 ? (
+                    <ResponsiveContainer width="100%" height={260}>
+                      <BarChart data={trends.sessions_by_month}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                        <XAxis dataKey="month" tick={{ fontSize: 11 }} />
+                        <YAxis tick={{ fontSize: 11 }} />
+                        <Tooltip contentStyle={{ borderRadius: '8px', fontSize: '12px' }} />
+                        <Bar dataKey="count" fill="hsl(142, 71%, 42%)" name="Sessions" radius={[4, 4, 0, 0]} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  ) : (
+                    <div className="h-64 flex items-center justify-center text-sm text-muted-foreground">No session data yet</div>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Expertise Distribution */}
+              <Card className="shadow-card">
+                <CardContent className="p-5">
+                  <h3 className="font-heading font-semibold text-sm text-foreground mb-4">Coach Expertise Distribution</h3>
+                  {trends?.expertise_distribution?.length > 0 ? (
+                    <ResponsiveContainer width="100%" height={260}>
+                      <PieChart>
+                        <Pie
+                          data={trends.expertise_distribution}
+                          cx="50%"
+                          cy="50%"
+                          outerRadius={90}
+                          innerRadius={45}
+                          dataKey="value"
+                          nameKey="name"
+                          label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                          labelLine={false}
+                        >
+                          {trends.expertise_distribution.map((_, i) => (
+                            <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />
+                          ))}
+                        </Pie>
+                        <Tooltip contentStyle={{ borderRadius: '8px', fontSize: '12px' }} />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  ) : (
+                    <div className="h-64 flex items-center justify-center text-sm text-muted-foreground">No expertise data</div>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Top Performing Coaches */}
+            {topCoaches.length > 0 && (
+              <Card className="shadow-card">
+                <CardContent className="p-5">
+                  <h3 className="font-heading font-semibold text-sm text-foreground mb-4">Top Performing Coaches (by Feedback Rating)</h3>
+                  <div className="space-y-3">
+                    {topCoaches.map((coach, idx) => (
+                      <div key={coach.id} className="flex items-center gap-3 p-3 rounded-xl bg-muted/30 border border-border cursor-pointer hover:bg-muted/50 transition-fast" onClick={() => openUserHistory(coach.id)} data-testid={`top-coach-${coach.id}`}>
+                        <span className={`w-7 h-7 flex items-center justify-center rounded-full text-xs font-bold ${idx === 0 ? 'bg-warning/20 text-warning' : idx === 1 ? 'bg-muted text-muted-foreground' : 'bg-accent/10 text-accent'}`}>
+                          {idx + 1}
+                        </span>
+                        <Avatar className="w-9 h-9">
+                          <AvatarImage src={coach.avatar} />
+                          <AvatarFallback className="bg-primary/10 text-primary text-xs">{coach.name?.[0]}</AvatarFallback>
+                        </Avatar>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-foreground truncate">{coach.name}</p>
+                          <p className="text-xs text-muted-foreground">{coach.title}</p>
+                        </div>
+                        <div className="flex items-center gap-4 text-right flex-shrink-0">
+                          <div>
+                            <div className="flex items-center gap-1">
+                              <Star className="w-3.5 h-3.5 fill-warning text-warning" />
+                              <span className="text-sm font-bold text-foreground">{coach.feedback_rating}</span>
+                            </div>
+                            <p className="text-xs text-muted-foreground">{coach.feedback_count} reviews</p>
+                          </div>
+                          <div className="text-center">
+                            <p className="text-sm font-bold text-foreground">{coach.session_count}</p>
+                            <p className="text-xs text-muted-foreground">sessions</p>
+                          </div>
+                          <ChevronRight className="w-4 h-4 text-muted-foreground" />
+                        </div>
+                      </div>
                     ))}
-                  </Pie>
-                  <Tooltip contentStyle={{ background: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: '8px', fontSize: '12px' }} />
-                  <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: '11px' }} />
-                </PieChart>
-              </ResponsiveContainer>
-            </CardContent>
-          </Card>
-
-          {/* Rating Distribution */}
-          <Card className="shadow-card">
-            <CardContent className="p-5">
-              <h3 className="font-heading font-semibold text-foreground mb-4">Rating Distribution</h3>
-              <ResponsiveContainer width="100%" height={200}>
-                <BarChart data={mockAdminStats.ratingDistribution} layout="vertical">
-                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" horizontal={false} />
-                  <XAxis type="number" tick={{ fontSize: 12, fill: 'hsl(var(--muted-foreground))' }} />
-                  <YAxis dataKey="stars" type="category" tick={{ fontSize: 12, fill: 'hsl(var(--muted-foreground))' }} width={45} />
-                  <Tooltip contentStyle={{ background: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: '8px', fontSize: '12px' }} />
-                  <Bar dataKey="count" fill="hsl(38 92% 50%)" radius={[0, 4, 4, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Coach Approvals */}
-        <Card className="shadow-card mb-6">
-          <CardContent className="p-5">
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-2">
-                <h3 className="font-heading font-semibold text-foreground">Pending Coach Approvals</h3>
-                {pendingCoaches.length > 0 && (
-                  <Badge className="bg-destructive/10 text-destructive border-0 text-xs">{pendingCoaches.length}</Badge>
-                )}
-              </div>
-              <Button variant="ghost" size="sm" className="text-xs text-primary h-7">
-                View All <ChevronRight className="w-3.5 h-3.5 ml-1" />
-              </Button>
-            </div>
-
-            {pendingCoaches.length === 0 ? (
-              <div className="text-center py-8">
-                <CheckCircle className="w-10 h-10 text-success mx-auto mb-2 opacity-60" />
-                <p className="text-sm text-muted-foreground">All coach applications reviewed</p>
-              </div>
-            ) : (
-              <div className="space-y-3">
-                {pendingCoaches.map(coach => (
-                  <div key={coach.id} className="flex items-start gap-3 p-3 border border-border rounded-xl hover:bg-muted/30 transition-fast">
-                    <Avatar className="w-11 h-11 flex-shrink-0">
-                      <AvatarImage src={coach.avatar} />
-                      <AvatarFallback>{coach.name.split(' ').map(n=>n[0]).join('')}</AvatarFallback>
-                    </Avatar>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className="font-heading font-semibold text-sm text-foreground">{coach.name}</span>
-                        <Badge variant="outline" className="text-xs border-border">{coach.title}</Badge>
-                      </div>
-                      <p className="text-xs text-muted-foreground mt-0.5">{coach.experience} · {coach.location}</p>
-                      <div className="flex flex-wrap gap-1 mt-1.5">
-                        {coach.certifications.map(c => (
-                          <span key={c} className="text-xs px-2 py-0.5 bg-primary-subtle text-primary rounded-full">{c}</span>
-                        ))}
-                      </div>
-                      <p className="text-xs text-muted-foreground mt-1">Applied: {coach.submittedAt}</p>
-                    </div>
-                    <div className="flex items-center gap-2 flex-shrink-0">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="h-8 text-xs"
-                        onClick={() => setReviewingCoach(coach)}
-                      >
-                        <Eye className="w-3.5 h-3.5 mr-1" /> Review
-                      </Button>
-                      <Button
-                        size="sm"
-                        className="h-8 text-xs bg-success text-white hover:bg-success/90"
-                        onClick={() => handleApprove(coach.id)}
-                      >
-                        <CheckCircle className="w-3.5 h-3.5 mr-1" /> Approve
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="h-8 text-xs border-destructive text-destructive hover:bg-destructive/10"
-                        onClick={() => handleReject(coach.id)}
-                      >
-                        <XCircle className="w-3.5 h-3.5" />
-                      </Button>
-                    </div>
                   </div>
-                ))}
-              </div>
+                </CardContent>
+              </Card>
             )}
-          </CardContent>
-        </Card>
-      </div>
+          </div>
+        )}
 
-      {/* Coach Review Modal */}
-      {reviewingCoach && (
-        <Dialog open={!!reviewingCoach} onOpenChange={() => setReviewingCoach(null)}>
-          <DialogContent className="max-w-lg">
-            <DialogHeader>
-              <DialogTitle className="font-heading">Coach Profile Review</DialogTitle>
-            </DialogHeader>
-            <div className="flex items-center gap-3 mb-4">
-              <Avatar className="w-14 h-14">
-                <AvatarImage src={reviewingCoach.avatar} />
-                <AvatarFallback>{reviewingCoach.name.split(' ').map(n=>n[0]).join('')}</AvatarFallback>
-              </Avatar>
-              <div>
-                <h3 className="font-heading font-semibold">{reviewingCoach.name}</h3>
-                <p className="text-sm text-muted-foreground">{reviewingCoach.title}</p>
-                <p className="text-xs text-muted-foreground">{reviewingCoach.experience} · {reviewingCoach.location}</p>
-              </div>
-            </div>
-            <div className="space-y-3">
-              <InfoRow label="Email" value={reviewingCoach.email} />
-              <InfoRow label="Certifications" value={reviewingCoach.certifications.join(', ')} />
-              <InfoRow label="Applied" value={reviewingCoach.submittedAt} />
-              <div>
-                <p className="text-xs text-muted-foreground mb-1.5">Expertise Areas</p>
-                <div className="flex flex-wrap gap-1.5">
-                  {reviewingCoach.expertise.map(e => (
-                    <span key={e} className="expertise-tag">{e}</span>
-                  ))}
+        {/* Coaches Tab */}
+        {activeTab === 'coaches' && (
+          <div className="space-y-3">
+            {coaches.map(coach => (
+              <div
+                key={coach.id}
+                className="flex items-center gap-4 p-4 bg-card rounded-xl border border-border shadow-card cursor-pointer hover:bg-muted/30 transition-fast"
+                onClick={() => openUserHistory(coach.id)}
+                data-testid={`coach-row-${coach.id}`}
+              >
+                <Avatar className="w-11 h-11">
+                  <AvatarImage src={coach.avatar} />
+                  <AvatarFallback className="bg-primary/10 text-primary">{coach.name?.[0]}</AvatarFallback>
+                </Avatar>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold text-foreground truncate">{coach.name}</p>
+                  <p className="text-xs text-muted-foreground">{coach.title}</p>
+                  <div className="flex flex-wrap gap-1 mt-1">
+                    {(coach.expertise || []).slice(0, 3).map(e => (
+                      <span key={e} className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full">{e}</span>
+                    ))}
+                  </div>
+                </div>
+                <div className="flex items-center gap-6 text-center flex-shrink-0">
+                  <div>
+                    <p className="text-sm font-bold text-foreground">{coach.session_count}</p>
+                    <p className="text-xs text-muted-foreground">Sessions</p>
+                  </div>
+                  <div>
+                    <p className="text-sm font-bold text-foreground">{coach.active_coachees}</p>
+                    <p className="text-xs text-muted-foreground">Active</p>
+                  </div>
+                  <div>
+                    {coach.feedback_rating ? (
+                      <>
+                        <div className="flex items-center gap-1 justify-center">
+                          <Star className="w-3.5 h-3.5 fill-warning text-warning" />
+                          <span className="text-sm font-bold text-foreground">{coach.feedback_rating}</span>
+                        </div>
+                        <p className="text-xs text-muted-foreground">{coach.feedback_count} reviews</p>
+                      </>
+                    ) : (
+                      <p className="text-xs text-muted-foreground">No rating</p>
+                    )}
+                  </div>
+                  <Eye className="w-4 h-4 text-muted-foreground" />
                 </div>
               </div>
-            </div>
-            <div className="flex justify-end gap-3 mt-4">
-              <Button
-                variant="outline"
-                className="border-destructive text-destructive hover:bg-destructive/10"
-                onClick={() => handleReject(reviewingCoach.id)}
-              >
-                <XCircle className="w-4 h-4 mr-2" /> Reject
-              </Button>
-              <Button
-                className="bg-success text-white hover:bg-success/90"
-                onClick={() => handleApprove(reviewingCoach.id)}
-              >
-                <CheckCircle className="w-4 h-4 mr-2" /> Approve Coach
-              </Button>
-            </div>
-          </DialogContent>
-        </Dialog>
-      )}
-    </div>
-  );
-}
+            ))}
+          </div>
+        )}
 
-function InfoRow({ label, value }) {
-  return (
-    <div className="flex justify-between items-start">
-      <span className="text-xs text-muted-foreground">{label}</span>
-      <span className="text-sm font-medium text-foreground text-right max-w-[60%]">{value}</span>
+        {/* Coachees Tab */}
+        {activeTab === 'coachees' && (
+          <div className="space-y-3">
+            {coachees.map(coachee => (
+              <div
+                key={coachee.id}
+                className="flex items-center gap-4 p-4 bg-card rounded-xl border border-border shadow-card cursor-pointer hover:bg-muted/30 transition-fast"
+                onClick={() => openUserHistory(coachee.id)}
+                data-testid={`coachee-row-${coachee.id}`}
+              >
+                <Avatar className="w-11 h-11">
+                  <AvatarImage src={coachee.avatar} />
+                  <AvatarFallback className="bg-accent/10 text-accent">{coachee.name?.[0]}</AvatarFallback>
+                </Avatar>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold text-foreground truncate">{coachee.name}</p>
+                  <p className="text-xs text-muted-foreground">{coachee.email}</p>
+                </div>
+                <div className="flex items-center gap-6 text-center flex-shrink-0">
+                  <div>
+                    <p className="text-sm font-bold text-foreground">{coachee.session_count}</p>
+                    <p className="text-xs text-muted-foreground">Sessions</p>
+                  </div>
+                  <div>
+                    <p className="text-sm font-bold text-foreground">{coachee.journey_count}</p>
+                    <p className="text-xs text-muted-foreground">Journeys</p>
+                  </div>
+                  <div>
+                    {coachee.active_journey_status ? (
+                      <Badge className={`border-0 text-xs ${
+                        coachee.active_journey_status === 'accepted' ? 'bg-success/10 text-success' :
+                        coachee.active_journey_status === 'paused' ? 'bg-warning/10 text-warning' :
+                        'bg-primary/10 text-primary'
+                      }`}>{coachee.active_journey_status}</Badge>
+                    ) : (
+                      <span className="text-xs text-muted-foreground">Inactive</span>
+                    )}
+                  </div>
+                  <Eye className="w-4 h-4 text-muted-foreground" />
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* User Detail Modal */}
+      <Dialog open={userModal.open} onOpenChange={(open) => !open && setUserModal({ open: false, data: null, loading: false })}>
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto" data-testid="user-history-modal">
+          {userModal.loading ? (
+            <div className="flex items-center justify-center py-12">
+              <div className="animate-spin w-8 h-8 border-4 border-primary border-t-transparent rounded-full" />
+            </div>
+          ) : userModal.data ? (
+            <>
+              <DialogHeader>
+                <div className="flex items-center gap-3">
+                  <Avatar className="w-12 h-12">
+                    <AvatarImage src={userModal.data.user.avatar} />
+                    <AvatarFallback>{userModal.data.user.name?.[0]}</AvatarFallback>
+                  </Avatar>
+                  <div>
+                    <DialogTitle className="text-base" data-testid="modal-user-name">{userModal.data.user.name}</DialogTitle>
+                    <p className="text-xs text-muted-foreground">{userModal.data.user.email} &middot; {userModal.data.user.role}</p>
+                    {userModal.data.user.title && <p className="text-xs text-muted-foreground">{userModal.data.user.title}</p>}
+                  </div>
+                </div>
+              </DialogHeader>
+
+              {/* Stats */}
+              <div className="grid grid-cols-3 gap-3 mt-4">
+                <div className="bg-primary/5 rounded-xl p-3 text-center">
+                  <p className="text-lg font-bold text-primary">{userModal.data.sessions.length}</p>
+                  <p className="text-xs text-muted-foreground">Total Sessions</p>
+                </div>
+                <div className="bg-success/5 rounded-xl p-3 text-center">
+                  <p className="text-lg font-bold text-success">{userModal.data.sessions.filter(s => s.status === 'completed').length}</p>
+                  <p className="text-xs text-muted-foreground">Completed</p>
+                </div>
+                <div className="bg-warning/5 rounded-xl p-3 text-center">
+                  <p className="text-lg font-bold text-warning">{userModal.data.journeys.length}</p>
+                  <p className="text-xs text-muted-foreground">Journeys</p>
+                </div>
+              </div>
+
+              {/* Feedback Received (for coaches) */}
+              {userModal.data.feedback.length > 0 && (
+                <div className="mt-5">
+                  <h4 className="font-heading font-semibold text-sm text-foreground mb-3">
+                    {userModal.data.user.role === 'coach' ? 'Feedback Received' : 'Feedback Given'}
+                  </h4>
+                  <div className="space-y-2">
+                    {userModal.data.feedback.map(fb => (
+                      <div key={fb.id} className="p-3 rounded-xl bg-muted/30 border border-border text-xs">
+                        <div className="flex items-center gap-4 mb-2">
+                          <div className="flex items-center gap-1">
+                            <Star className="w-3.5 h-3.5 fill-warning text-warning" />
+                            <span className="font-bold text-foreground">{fb.overall_rating}/5</span>
+                            <span className="text-muted-foreground ml-1">Overall</span>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            <Star className="w-3.5 h-3.5 fill-primary text-primary" />
+                            <span className="font-bold text-foreground">{fb.coach_rating}/5</span>
+                            <span className="text-muted-foreground ml-1">Coach</span>
+                          </div>
+                        </div>
+                        {fb.learning_outcomes && (
+                          <div className="flex gap-3 mb-2 flex-wrap">
+                            {Object.entries(fb.learning_outcomes).map(([key, val]) => (
+                              <span key={key} className="text-muted-foreground">
+                                {key.replace(/_/g, ' ')}: <strong className="text-foreground">{val}/5</strong>
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                        {fb.most_valuable && <p className="text-foreground mt-1">"{fb.most_valuable}"</p>}
+                        {fb.suggestions && <p className="text-muted-foreground mt-1 italic">Suggestions: {fb.suggestions}</p>}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Journey History */}
+              {userModal.data.journeys.length > 0 && (
+                <div className="mt-5">
+                  <h4 className="font-heading font-semibold text-sm text-foreground mb-3">Journey History</h4>
+                  <div className="space-y-2">
+                    {userModal.data.journeys.map(j => (
+                      <div key={j.id} className="flex items-center gap-3 p-3 rounded-xl bg-muted/30 border border-border">
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs font-medium text-foreground">{j.mentorship_area || 'Coaching Journey'}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {userModal.data.user.role === 'coach'
+                              ? `Coachee: ${j.coachee_name || 'Unknown'}`
+                              : `Coach: ${j.preferences?.find(p => p.status === 'accepted')?.coach_name || 'Unknown'}`}
+                          </p>
+                        </div>
+                        <Badge className={`border-0 text-xs ${
+                          j.status === 'completed' ? 'bg-success/10 text-success' :
+                          j.status === 'accepted' ? 'bg-primary/10 text-primary' :
+                          j.status === 'paused' ? 'bg-warning/10 text-warning' :
+                          'bg-muted text-muted-foreground'
+                        }`}>{j.status}</Badge>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Session History */}
+              {userModal.data.sessions.length > 0 && (
+                <div className="mt-5">
+                  <h4 className="font-heading font-semibold text-sm text-foreground mb-3">Session History</h4>
+                  <div className="space-y-2 max-h-60 overflow-y-auto">
+                    {userModal.data.sessions.map(s => (
+                      <div key={s.id} className="flex items-center gap-3 p-3 rounded-xl bg-muted/30 border border-border">
+                        <div className={`w-2 h-2 rounded-full flex-shrink-0 ${s.status === 'completed' ? 'bg-success' : s.status === 'upcoming' ? 'bg-primary' : 'bg-muted-foreground'}`} />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs font-medium text-foreground">{s.topic || 'Session'}</p>
+                          <p className="text-xs text-muted-foreground">{s.date} at {s.time}</p>
+                        </div>
+                        <div className="text-right flex-shrink-0">
+                          <p className="text-xs text-muted-foreground">{s.coach_name}</p>
+                          <Badge variant="outline" className={`text-xs ${s.status === 'completed' ? 'text-success border-success/30' : 'text-primary border-primary/30'}`}>
+                            {s.status}
+                          </Badge>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </>
+          ) : null}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

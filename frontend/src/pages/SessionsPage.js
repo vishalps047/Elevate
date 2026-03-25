@@ -43,6 +43,16 @@ export default function SessionsPage() {
     }
   };
 
+  const handleCompleteSession = async (session) => {
+    try {
+      await api.completeSession(session.id);
+      toast.success(`Session "${session.topic}" marked as completed`);
+      await loadSessions();
+    } catch (e) {
+      toast.error(e.message);
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -92,6 +102,7 @@ export default function SessionsPage() {
                 session={session}
                 role={user?.role}
                 onReschedule={(s) => setRescheduleModal({ open: true, session: s })}
+                onComplete={handleCompleteSession}
               />
             ))}
           </div>

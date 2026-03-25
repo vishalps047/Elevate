@@ -7,7 +7,7 @@ import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from './ui/dialog';
 import { Calendar, Clock, Video, RefreshCw, CheckCircle } from 'lucide-react';
 
-export function SessionCard({ session, role, onReschedule }) {
+export function SessionCard({ session, role, onReschedule, onComplete }) {
   const isUpcoming = session.status === 'upcoming';
   const otherPerson = role === 'coachee'
     ? { name: session.coach_name, avatar: session.coach_avatar }
@@ -39,6 +39,11 @@ export function SessionCard({ session, role, onReschedule }) {
             <Button size="sm" variant="outline" className="text-xs h-7 px-2" onClick={() => onReschedule(session)} data-testid={`reschedule-btn-${session.id}`}>
               <RefreshCw className="w-3 h-3 mr-1" /> Reschedule
             </Button>
+            {onComplete && (
+              <Button size="sm" variant="outline" className="text-xs h-7 px-2 text-success border-success/30 hover:bg-success/10" onClick={() => onComplete(session)} data-testid={`complete-btn-${session.id}`}>
+                <CheckCircle className="w-3 h-3 mr-1" /> Complete
+              </Button>
+            )}
             {session.meeting_link && (
               <Button size="sm" className="bg-primary text-white text-xs h-7 px-3" asChild>
                 <a href={session.meeting_link} target="_blank" rel="noopener noreferrer">Join</a>

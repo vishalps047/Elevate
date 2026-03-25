@@ -3,17 +3,23 @@ from database import db
 from models import LoginRequest
 import jwt
 import os
-import hashlib
+import bcrypt
 from datetime import datetime, timezone, timedelta
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
-JWT_SECRET = os.environ.get("JWT_SECRET", "elevate-platform-secret-2026")
+JWT_SECRET = os.environ.get("JWT_SECRET")
+if not JWT_SECRET:
+    raise RuntimeError("JWT_SECRET environment variable is required")
 JWT_ALGORITHM = "HS256"
 
 
 def hash_password(password):
-    return hashlib.sha256(password.encode()).hexdigest()
+    return bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
+
+
+def verify_password(password, hashed):
+    return bcrypt.checkpw(password.encode(), hashed.encode())
 
 
 async def get_current_user(authorization: str = Header(None)):
@@ -37,14 +43,13 @@ async def get_current_user(authorization: str = Header(None)):
 @router.post("/login")
 async def login(body: LoginRequest):
     user = await db.users.find_one({"email": body.email}, {"_id": 0})
-    if not user or user.get("password_hash") != hash_password(body.password):
+    if not user or not verify_password(body.password, user.get("password_hash", "")):
         raise HTTPException(status_code=401, detail="Invalid email or password")
 
     token = jwt.encode(
         {
             "user_id": user["id"],
             "role": user["role"],
-            "email": user["email"],
             "exp": datetime.now(timezone.utc) + timedelta(days=7),
         },
         JWT_SECRET,

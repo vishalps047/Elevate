@@ -265,7 +265,7 @@
   /* Coach card banner */
   .coach-banner {
     background: linear-gradient(135deg, hsl(271 65% 22%), hsl(267 55% 38%));
-    height: 80px;
+    height: 48px;
     border-radius: var(--radius) var(--radius) 0 0;
   }
 }

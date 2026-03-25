@@ -348,6 +348,14 @@ export default function CoachDashboard() {
     } catch (e) { toast.error(e.message); }
   };
 
+  const handleCompleteSession = async (session) => {
+    try {
+      await api.completeSession(session.id);
+      toast.success(`Session marked as completed`);
+      await loadData();
+    } catch (e) { toast.error(e.message); }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -435,7 +443,7 @@ export default function CoachDashboard() {
                 ) : (
                   <div className="space-y-3">
                     {upcomingSessions.map(s => (
-                      <SessionCard key={s.id} session={s} role="coach" onReschedule={(s) => setRescheduleModal({ open: true, session: s })} />
+                      <SessionCard key={s.id} session={s} role="coach" onReschedule={(s) => setRescheduleModal({ open: true, session: s })} onComplete={handleCompleteSession} />
                     ))}
                   </div>
                 )}
