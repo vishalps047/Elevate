@@ -123,8 +123,20 @@ function AvailabilityCalendar({ user }) {
     }
   };
 
-  const prevMonth = () => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1));
+  const prevMonth = () => {
+    const prev = new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1);
+    const now = new Date();
+    if (prev.getFullYear() > now.getFullYear() || (prev.getFullYear() === now.getFullYear() && prev.getMonth() >= now.getMonth())) {
+      setCurrentMonth(prev);
+    }
+  };
   const nextMonth = () => setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1));
+
+  const canGoPrev = (() => {
+    const prev = new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1);
+    const now = new Date();
+    return prev.getFullYear() > now.getFullYear() || (prev.getFullYear() === now.getFullYear() && prev.getMonth() >= now.getMonth());
+  })();
 
   return (
     <Card className="shadow-card" data-testid="availability-calendar">
@@ -135,7 +147,7 @@ function AvailabilityCalendar({ user }) {
 
         {/* Month navigation */}
         <div className="flex items-center justify-between mb-3">
-          <Button variant="ghost" size="sm" onClick={prevMonth} className="h-7 px-2 text-xs">&lt; Prev</Button>
+          <Button variant="ghost" size="sm" onClick={prevMonth} disabled={!canGoPrev} className="h-7 px-2 text-xs">&lt; Prev</Button>
           <span className="text-sm font-semibold text-foreground">{monthLabel}</span>
           <Button variant="ghost" size="sm" onClick={nextMonth} className="h-7 px-2 text-xs">Next &gt;</Button>
         </div>
@@ -153,14 +165,17 @@ function AvailabilityCalendar({ user }) {
             const isSelected = selectedDate === ds;
             const hasSlots = avail && avail.slots.length > 0;
             const bookedCount = avail?.booked_slots?.length || 0;
+            const today = new Date(); today.setHours(0,0,0,0);
+            const isPast = d < today;
+            const isDisabled = isWeekend || isPast;
 
             return (
               <button
                 key={ds}
                 onClick={() => handleDateClick(d)}
-                disabled={isWeekend}
+                disabled={isDisabled}
                 className={`relative h-9 w-full rounded-lg text-xs font-medium transition-fast ${
-                  isWeekend ? 'text-muted-foreground/30 cursor-not-allowed' :
+                  isDisabled ? 'text-muted-foreground/30 cursor-not-allowed' :
                   isSelected ? 'bg-primary text-white ring-2 ring-primary/30' :
                   hasSlots ? 'bg-accent-subtle text-accent hover:bg-accent/20 border border-accent/30' :
                   'hover:bg-muted text-foreground'
@@ -221,7 +236,10 @@ function AvailabilityCalendar({ user }) {
             <p className="text-xs text-muted-foreground mb-2">Available dates this month:</p>
             <div className="space-y-1 max-h-[120px] overflow-y-auto">
               {availability
-                .filter(a => a.date.startsWith(currentMonth.toISOString().slice(0, 7)) && a.slots.length > 0)
+                .filter(a => {
+                  const today = new Date().toISOString().split('T')[0];
+                  return a.date >= today && a.date.startsWith(currentMonth.toISOString().slice(0, 7)) && a.slots.length > 0;
+                })
                 .slice(0, 8)
                 .map(a => (
                   <div key={a.date} className="flex items-center justify-between text-xs bg-muted/30 rounded-lg px-2.5 py-1.5">

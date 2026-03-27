@@ -69,7 +69,11 @@ export function ScheduleModal({ open, onClose, coachId, coachName, coachAvatar, 
       setSelectedDate(null);
       setSelectedTime(null);
       api.getAvailability(coachId)
-        .then(s => setSlots(s))
+        .then(s => {
+          // Filter out past dates
+          const today = new Date().toISOString().split('T')[0];
+          setSlots(s.filter(slot => slot.date >= today));
+        })
         .catch(() => setSlots([]))
         .finally(() => setFetching(false));
     }
@@ -182,7 +186,10 @@ export function RescheduleModal({ open, onClose, session, coachId, onConfirm }) 
     if (open) {
       const cId = coachId || session?.coach_id;
       if (cId) {
-        api.getAvailability(cId).then(s => setSlots(s)).catch(() => setSlots([]));
+        api.getAvailability(cId).then(s => {
+          const today = new Date().toISOString().split('T')[0];
+          setSlots(s.filter(slot => slot.date >= today));
+        }).catch(() => setSlots([]));
       }
       setSelectedDate(null);
       setSelectedTime(null);
