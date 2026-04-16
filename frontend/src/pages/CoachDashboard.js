@@ -42,7 +42,7 @@ function AvailabilityCalendar({ user }) {
   const [availability, setAvailability] = useState([]);
   const [selectedDate, setSelectedDate] = useState(null);
   const [selectedSlots, setSelectedSlots] = useState([]);
-  const [currentMonth, setCurrentMonth] = useState(new Date(2026, 2)); // March 2026
+  const [currentMonth, setCurrentMonth] = useState(() => { const now = new Date(); return new Date(now.getFullYear(), now.getMonth()); });
   const [saving, setSaving] = useState(false);
 
   const loadAvailability = useCallback(async () => {
