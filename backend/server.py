@@ -1,4 +1,5 @@
 from fastapi import FastAPI
+from fastapi.staticfiles import StaticFiles
 from contextlib import asynccontextmanager
 from starlette.middleware.cors import CORSMiddleware
 from database import db
@@ -10,6 +11,9 @@ from dotenv import load_dotenv
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
+
+UPLOAD_DIR = ROOT_DIR / "uploads"
+UPLOAD_DIR.mkdir(exist_ok=True)
 
 from routes.auth import router as auth_router
 from routes.coaches import router as coaches_router
@@ -58,6 +62,8 @@ app.include_router(sessions_router, prefix="/api")
 app.include_router(notifications_router, prefix="/api")
 app.include_router(admin_router, prefix="/api")
 app.include_router(registrations_router, prefix="/api")
+
+app.mount("/api/uploads", StaticFiles(directory=str(UPLOAD_DIR)), name="uploads")
 
 app.add_middleware(
     CORSMiddleware,

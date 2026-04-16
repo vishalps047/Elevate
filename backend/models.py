@@ -56,3 +56,23 @@ class AvailabilityInput(BaseModel):
     date: str
     day_label: str
     slots: List[str]
+
+
+class ProfileUpdateBody(BaseModel):
+    avatar: Optional[str] = None
+    title: Optional[str] = None
+    location: Optional[str] = None
+    about: Optional[str] = None
+    experience: Optional[str] = None
+    expertise: Optional[List[str]] = None
+    domains: Optional[List[str]] = None
+    certifications: Optional[List[str]] = None
+    job_title: Optional[str] = None
+    department: Optional[str] = None
+    tier: Optional[str] = None
+    designation: Optional[str] = None
+    business_unit: Optional[str] = None
+    competency: Optional[str] = None
+    date_of_joining: Optional[str] = None
+    enrolment_type: Optional[str] = None
+    reason_for_enrolment: Optional[str] = None

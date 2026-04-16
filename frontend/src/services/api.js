@@ -98,6 +98,21 @@ class ApiService {
   // Public
   getPublicStats() { return this.request('/api/public/stats', { noAuth: true }); }
 
+  // Profile
+  updateProfile(data) { return this.request('/api/auth/profile', { method: 'PUT', body: JSON.stringify(data) }); }
+  async uploadAvatar(file) {
+    const formData = new FormData();
+    formData.append('file', file);
+    const headers = {};
+    if (this.token) headers['Authorization'] = `Bearer ${this.token}`;
+    const response = await fetch(`${API_URL}/api/auth/avatar`, { method: 'POST', headers, body: formData });
+    if (!response.ok) {
+      const error = await response.json().catch(() => ({ detail: 'Upload failed' }));
+      throw new Error(error.detail || 'Upload failed');
+    }
+    return response.json();
+  }
+
   // Notifications
   getNotifications() { return this.request('/api/notifications'); }
   markRead(id) { return this.request(`/api/notifications/${id}/read`, { method: 'PUT' }); }

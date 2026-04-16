@@ -50,6 +50,13 @@ export const AppProvider = ({ children }) => {
     return result.user;
   };
 
+  const refreshUser = async () => {
+    try {
+      const u = await api.getMe();
+      setUser(u);
+    } catch (_) { /* ignore */ }
+  };
+
   const logout = () => {
     api.setToken(null);
     setToken(null);
@@ -85,6 +92,7 @@ export const AppProvider = ({ children }) => {
       loading,
       login,
       logout,
+      refreshUser,
       notifications,
       unreadCount,
       markAllRead,

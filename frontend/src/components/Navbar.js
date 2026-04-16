@@ -7,6 +7,7 @@ import {
   DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger
 } from '../components/ui/dropdown-menu';
 import NotificationPanel from './NotificationPanel';
+import ProfileEditModal from './ProfileEditModal';
 import { useApp } from '../context/AppContext';
 import { useNavigate, useLocation } from 'react-router-dom';
 
@@ -31,6 +32,7 @@ export default function Navbar() {
   const [showNotif, setShowNotif] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [showProfile, setShowProfile] = useState(false);
   const notifRef = useRef(null);
   const navigate = useNavigate();
   const location = useLocation();
@@ -139,7 +141,7 @@ export default function Navbar() {
                   </div>
                 </DropdownMenuLabel>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem><User className="w-4 h-4 mr-2" /> My Profile</DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setShowProfile(true)} data-testid="profile-menu-btn"><User className="w-4 h-4 mr-2" /> My Profile</DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem className="text-destructive" onClick={handleLogout}>
                   <LogOut className="w-4 h-4 mr-2" /> Sign Out
@@ -184,6 +186,7 @@ export default function Navbar() {
           </div>
         )}
       </div>
+      <ProfileEditModal open={showProfile} onClose={() => setShowProfile(false)} />
     </header>
   );
 }
