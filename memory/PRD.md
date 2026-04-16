@@ -61,6 +61,8 @@ Role-based digital coaching platform for Grant Thornton, connecting employees (C
 20. Session Notes (add/view notes on completed sessions)
 21. Homepage Stats (public coach/coachee/session counts)
 22. Admin MIS Reports (coach occupancy, coachee status, location/BU distribution, nomination breakdown)
+23. Demo Login Buttons (one-click Coach/Coachee/Admin login for demos)
+24. Profile Editing (edit profile photo + role-specific fields, Name/Email locked)
 
 ## Key API Endpoints
 ### Public
@@ -68,6 +70,8 @@ Role-based digital coaching platform for Grant Thornton, connecting employees (C
 
 ### Auth
 - `POST /api/auth/login` | `GET /api/auth/me`
+- `PUT /api/auth/profile` - Update profile fields (role-restricted)
+- `POST /api/auth/avatar` - Upload profile photo (returns URL)
 
 ### Registrations (no auth for POST, admin for GET/PUT)
 - `POST /api/registrations` - Submit registration
@@ -98,4 +102,3 @@ Role-based digital coaching platform for Grant Thornton, connecting employees (C
 - SSO Integration with Outlook (Organisation Login)
 - External Calendar Integration (Outlook sync)
 - Email Notifications
-- Profile Editing
