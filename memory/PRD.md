@@ -13,74 +13,86 @@ Role-based digital coaching platform for Grant Thornton, connecting employees (C
 ```
 /app
 ├── backend/
-│   ├── server.py              # FastAPI app + background tasks (reminders + auto-complete)
+│   ├── server.py              # FastAPI app + background tasks + public stats
 │   ├── database.py            # MongoDB connection
 │   ├── models.py              # Pydantic models
-│   ├── helpers.py             # Notifications, reminders, auto-complete past sessions
-│   ├── seed.py                # DB seeding (users, past journey, availability, feedback)
+│   ├── helpers.py             # Notifications, reminders, auto-complete
+│   ├── seed.py                # DB seeding (users with org profiles, journeys, feedback)
 │   └── routes/
 │       ├── auth.py            # Login (bcrypt), JWT, get_current_user
 │       ├── coaches.py         # List coaches + availability CRUD
 │       ├── requests.py        # Coaching requests + accept/decline/complete/feedback/pause/restart
-│       ├── sessions.py        # Session CRUD with availability checking + complete
+│       ├── sessions.py        # Session CRUD + complete + session notes
 │       ├── notifications.py   # Notifications read/read-all
-│       └── admin.py           # Admin analytics (stats, coaches, coachees, trends, user history)
+│       ├── admin.py           # Admin analytics (stats, coaches, coachees, trends, user history, MIS)
+│       └── registrations.py   # Registration submission + admin approval/rejection
 └── frontend/src/
     ├── services/api.js
     ├── context/AppContext.js
-    ├── components/ (CoachCard, RequestWizard, SessionComponents, Navbar, etc.)
+    ├── components/ (CoachCard, RegistrationForm, RequestWizard, SessionComponents, Navbar)
     └── pages/ (LoginPage, CoacheeDashboard, CoachesPage, CoachDashboard, SessionsPage, AdminDashboard)
 ```
 
 ## Seeded Accounts (password: password123)
-- Coachees: sarah@elevate.com, alex@elevate.com
+- Coachees: sarah@elevate.com (T2, MUM, Audit), alex@elevate.com (T3, DEL, ESG)
 - Coaches: fatema, vaishali, gaurav, ajay, amina, rajesh @elevate.com
 - Admin: admin@elevate.com
 
 ## Completed Features
-1. JWT Auth with bcrypt password hashing + role-based routing
+1. JWT Auth with bcrypt + role-based routing
 2. 3-Preference Coach Selection with cascading decline
-3. Coach Availability Calendar - coaches manage dates/times
-4. Session Scheduling - checks availability, marks slots booked, schedules reminders
-5. Session Auto-Complete - background task auto-completes past sessions + demo Complete button
-6. Journey Completion (demo button) + Structured Feedback Form (Q1-Q5)
-7. Journey Lock - coachee blocked until journey + feedback complete
-8. Editable Total Sessions - coach can adjust session count
-9. Pause/Restart Journey - coaches pause/restart, coachees notified, scheduling disabled
-10. Notification System - real-time polling, auto-created on key events
-11. Background Reminder Task - session reminders (2d, 1d, 1h before)
-12. Rating Visibility - admin only
-13. Sessions Completed Stat - cumulative count across all journeys
-14. Uniform Coach Cards - consistent height/alignment, reduced banner
-15. SSO Placeholder - "Sign in with Organisation (SSO)" button ready for Outlook integration
-16. Security Hardening - bcrypt hashing, JWT_SECRET from env (no fallbacks), password excluded from responses
-17. Admin Dashboard (Full) - real API data: key metrics, coach utilization charts, request trends, expertise distribution, top coaches by feedback, drill-down user history modal
+3. Coach Availability Calendar
+4. Session Scheduling with availability checks + reminders
+5. Session Auto-Complete background task + demo Complete button
+6. Journey Completion + Structured Feedback Form (Q1-Q5)
+7. Journey Lock until feedback complete
+8. Editable Total Sessions
+9. Pause/Restart Journey with coachee notifications
+10. Notification System (polling-based)
+11. Background Reminder Task (2d, 1d, 1h)
+12. Admin-only rating visibility
+13. Cumulative Sessions Completed stat
+14. Uniform Coach Cards with reduced banner
+15. SSO Placeholder (Outlook)
+16. Security Hardening (bcrypt, JWT_SECRET, no fallbacks)
+17. Admin Dashboard (stats, charts, trends, top coaches, drill-down)
+18. Registration System (Coach/Coachee forms, admin approval, coach nomination)
+19. Coachee Profile in Coach Requests (tier, designation, BU, location, competency, enrolment reason)
+20. Session Notes (add/view notes on completed sessions)
+21. Homepage Stats (public coach/coachee/session counts)
+22. Admin MIS Reports (coach occupancy, coachee status, location/BU distribution, nomination breakdown)
 
-## API Endpoints
-- `POST /api/auth/login` - Login with email/password
-- `GET /api/auth/me` - Get current user
-- `GET /api/coaches` - List all coaches
-- `GET /api/coaches/{id}/availability` - Coach availability
-- `POST /api/coaches/availability` - Set availability
-- `POST /api/requests` - Create coaching request
-- `GET /api/requests/active` - Get active request
-- `PUT /api/requests/{id}/accept` - Accept request (coach)
-- `PUT /api/requests/{id}/decline` - Decline request (coach)
-- `PUT /api/requests/{id}/complete-journey` - Complete journey
-- `POST /api/requests/{id}/feedback` - Submit structured feedback (Q1-Q5)
-- `PUT /api/requests/{id}/pause` - Pause journey (coach)
-- `PUT /api/requests/{id}/restart` - Restart journey (coach)
-- `PUT /api/requests/{id}/total-sessions` - Update total sessions
-- `GET /api/sessions` - List sessions
-- `POST /api/sessions/schedule` - Schedule session
-- `PUT /api/sessions/{id}/complete` - Complete session (demo)
-- `GET /api/notifications` - Get notifications
-- `PUT /api/notifications/read-all` - Mark all read
-- `GET /api/admin/stats` - Platform analytics
-- `GET /api/admin/coaches` - All coaches with ratings
-- `GET /api/admin/coachees` - All coachees with analytics
-- `GET /api/admin/trends` - Charts data (utilization, trends, distribution)
-- `GET /api/admin/users/{id}/history` - User drill-down (sessions, journeys, feedback)
+## Key API Endpoints
+### Public
+- `GET /api/public/stats` - Coach/coachee/session counts (no auth)
+
+### Auth
+- `POST /api/auth/login` | `GET /api/auth/me`
+
+### Registrations (no auth for POST, admin for GET/PUT)
+- `POST /api/registrations` - Submit registration
+- `GET /api/registrations?status=pending` - List registrations
+- `PUT /api/registrations/{id}/approve` - Approve (creates user account)
+- `PUT /api/registrations/{id}/reject` - Reject
+
+### Coaches
+- `GET /api/coaches` | `GET /api/coaches/{id}/availability` | `POST /api/coaches/availability`
+
+### Requests
+- `POST /api/requests` | `GET /api/requests/active`
+- `PUT /api/requests/{id}/accept|decline|complete-journey|pause|restart|total-sessions`
+- `POST /api/requests/{id}/feedback`
+
+### Sessions
+- `GET /api/sessions` | `POST /api/sessions/schedule` | `PUT /api/sessions/{id}/complete`
+- `POST /api/sessions/{id}/notes` | `GET /api/sessions/{id}/notes`
+
+### Admin (admin role only)
+- `GET /api/admin/stats|coaches|coachees|trends|mis`
+- `GET /api/admin/users/{id}/history`
+
+### Notifications
+- `GET /api/notifications` | `PUT /api/notifications/read-all`
 
 ## Upcoming Tasks
 - SSO Integration with Outlook (Organisation Login)
