@@ -185,3 +185,94 @@ async def get_trends(user: dict = Depends(get_current_user)):
         "rating_distribution": [{"stars": f"{r['_id']} Stars", "count": r["count"]} for r in rating_dist],
         "expertise_distribution": [{"name": e["_id"], "value": e["count"]} for e in expertise_dist],
     }
+
+
+@router.get("/mis")
+async def get_mis_report(user: dict = Depends(get_current_user)):
+    require_admin(user)
+
+    # Coach occupancy: capacity, assigned, remaining
+    coaches = await db.users.find({"role": "coach"}, {"_id": 0, "password_hash": 0}).to_list(100)
+    coach_occupancy = []
+    for coach in coaches:
+        active = await db.coaching_requests.count_documents(
+            {"active_coach_id": coach["id"], "status": {"$in": ["accepted", "paused"]}}
+        )
+        total_slots = coach.get("slots", {}).get("total", 3)
+        coach_occupancy.append({
+            "id": coach["id"],
+            "name": coach["name"],
+            "designation": coach.get("designation", coach.get("title", "")),
+            "location": coach.get("location", ""),
+            "business_unit": coach.get("business_unit", ""),
+            "capacity": total_slots,
+            "assigned": active,
+            "remaining": max(total_slots - active, 0),
+        })
+
+    # Coachee status breakdown
+    all_coachees = await db.users.find({"role": "coachee"}, {"_id": 0, "password_hash": 0}).to_list(200)
+    coachee_statuses = []
+    for coachee in all_coachees:
+        req = await db.coaching_requests.find_one(
+            {"coachee_id": coachee["id"]}, {"_id": 0, "status": 1, "active_coach_id": 1, "mentorship_area": 1}
+        )
+        sessions_done = await db.sessions.count_documents({"coachee_id": coachee["id"], "status": "completed"})
+        status = "Unassigned"
+        coach_name = ""
+        if req:
+            if req["status"] == "accepted":
+                status = "Undergoing Coaching"
+            elif req["status"] == "paused":
+                status = "Paused"
+            elif req["status"] == "completed":
+                status = "Completed"
+            elif req["status"] == "pending":
+                status = "Pending Assignment"
+            c = await db.users.find_one({"id": req.get("active_coach_id")}, {"_id": 0, "name": 1})
+            coach_name = c["name"] if c else ""
+
+        coachee_statuses.append({
+            "id": coachee["id"],
+            "name": coachee["name"],
+            "email": coachee.get("email", ""),
+            "designation": coachee.get("designation", coachee.get("job_title", "")),
+            "location": coachee.get("location", ""),
+            "business_unit": coachee.get("business_unit", coachee.get("department", "")),
+            "tier": coachee.get("tier", ""),
+            "enrolment_type": coachee.get("enrolment_type", ""),
+            "coaching_status": status,
+            "assigned_coach": coach_name,
+            "sessions_completed": sessions_done,
+        })
+
+    # Location distribution
+    loc_pipeline = [
+        {"$match": {"role": {"$in": ["coach", "coachee"]}}},
+        {"$group": {"_id": "$location", "coaches": {"$sum": {"$cond": [{"$eq": ["$role", "coach"]}, 1, 0]}}, "coachees": {"$sum": {"$cond": [{"$eq": ["$role", "coachee"]}, 1, 0]}}}},
+        {"$sort": {"_id": 1}},
+    ]
+    location_dist = await db.users.aggregate(loc_pipeline).to_list(20)
+
+    # Business unit distribution
+    bu_pipeline = [
+        {"$match": {"role": {"$in": ["coach", "coachee"]}, "business_unit": {"$exists": True, "$ne": ""}}},
+        {"$group": {"_id": "$business_unit", "count": {"$sum": 1}}},
+        {"$sort": {"count": -1}},
+    ]
+    bu_dist = await db.users.aggregate(bu_pipeline).to_list(20)
+
+    # Nomination type breakdown
+    enrol_pipeline = [
+        {"$match": {"role": "coachee", "enrolment_type": {"$exists": True, "$ne": ""}}},
+        {"$group": {"_id": "$enrolment_type", "count": {"$sum": 1}}},
+    ]
+    enrol_dist = await db.users.aggregate(enrol_pipeline).to_list(10)
+
+    return {
+        "coach_occupancy": coach_occupancy,
+        "coachee_statuses": coachee_statuses,
+        "location_distribution": [{"location": loc["_id"] or "Unknown", "coaches": loc["coaches"], "coachees": loc["coachees"]} for loc in location_dist if loc["_id"]],
+        "business_unit_distribution": [{"name": b["_id"], "value": b["count"]} for b in bu_dist if b["_id"]],
+        "nomination_breakdown": [{"type": e["_id"], "count": e["count"]} for e in enrol_dist if e["_id"]],
+    }

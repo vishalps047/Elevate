@@ -1,0 +1,177 @@
+from fastapi import APIRouter, HTTPException, Depends
+from database import db
+from routes.auth import get_current_user, hash_password
+from pydantic import BaseModel
+from typing import Optional, List
+from datetime import datetime, timezone
+import uuid
+
+router = APIRouter(prefix="/registrations", tags=["registrations"])
+
+
+class CoacheeNomination(BaseModel):
+    name: str
+    email: str
+
+
+class RegistrationRequest(BaseModel):
+    role: str  # "coach" or "coachee"
+    name: str
+    email: str
+    date_of_joining: Optional[str] = ""
+    tier: Optional[str] = ""
+    designation: Optional[str] = ""
+    location: Optional[str] = ""
+    business_unit: Optional[str] = ""
+    competency: Optional[str] = ""
+    co_supercoach: Optional[str] = ""
+    enrolment_type: Optional[str] = "Self-nomination"
+    reason_for_enrolment: Optional[str] = ""
+    nominated_coachees: Optional[List[CoacheeNomination]] = []
+
+
+@router.post("")
+async def submit_registration(body: RegistrationRequest):
+    # Check if email already registered
+    existing_user = await db.users.find_one({"email": body.email.lower()})
+    if existing_user:
+        raise HTTPException(status_code=400, detail="This email is already registered on the platform")
+
+    existing_reg = await db.registrations.find_one(
+        {"email": body.email.lower(), "status": "pending"}
+    )
+    if existing_reg:
+        raise HTTPException(status_code=400, detail="A registration request with this email is already pending")
+
+    reg_id = str(uuid.uuid4())
+    registration = {
+        "id": reg_id,
+        "role": body.role,
+        "name": body.name,
+        "email": body.email.lower(),
+        "date_of_joining": body.date_of_joining,
+        "tier": body.tier,
+        "designation": body.designation,
+        "location": body.location,
+        "business_unit": body.business_unit,
+        "competency": body.competency,
+        "co_supercoach": body.co_supercoach,
+        "enrolment_type": body.enrolment_type,
+        "reason_for_enrolment": body.reason_for_enrolment,
+        "nominated_coachees": [c.model_dump() for c in (body.nominated_coachees or [])],
+        "status": "pending",
+        "created_at": datetime.now(timezone.utc).isoformat(),
+    }
+    await db.registrations.insert_one(registration)
+
+    # If coach nominated coachees, create separate registration entries for them
+    for nominee in (body.nominated_coachees or []):
+        existing = await db.users.find_one({"email": nominee.email.lower()})
+        existing_reg = await db.registrations.find_one({"email": nominee.email.lower(), "status": "pending"})
+        if not existing and not existing_reg:
+            await db.registrations.insert_one({
+                "id": str(uuid.uuid4()),
+                "role": "coachee",
+                "name": nominee.name,
+                "email": nominee.email.lower(),
+                "enrolment_type": "Coach-nominated",
+                "nominated_by": body.name,
+                "nominated_by_email": body.email.lower(),
+                "status": "pending",
+                "created_at": datetime.now(timezone.utc).isoformat(),
+            })
+
+    return {"id": reg_id, "message": "Registration submitted successfully. An admin will review your request."}
+
+
+@router.get("")
+async def list_registrations(status: str = "pending", user: dict = Depends(get_current_user)):
+    if user["role"] != "admin":
+        raise HTTPException(status_code=403, detail="Admin access required")
+
+    query = {}
+    if status != "all":
+        query["status"] = status
+    regs = await db.registrations.find(query, {"_id": 0}).sort("created_at", -1).to_list(200)
+    return regs
+
+
+@router.put("/{reg_id}/approve")
+async def approve_registration(reg_id: str, user: dict = Depends(get_current_user)):
+    if user["role"] != "admin":
+        raise HTTPException(status_code=403, detail="Admin access required")
+
+    reg = await db.registrations.find_one({"id": reg_id}, {"_id": 0})
+    if not reg:
+        raise HTTPException(status_code=404, detail="Registration not found")
+    if reg["status"] != "pending":
+        raise HTTPException(status_code=400, detail="Registration already processed")
+
+    # Create user account
+    new_user = {
+        "id": str(uuid.uuid4()),
+        "email": reg["email"],
+        "password_hash": hash_password("password123"),
+        "name": reg["name"],
+        "role": reg["role"],
+        "avatar": "",
+        "date_of_joining": reg.get("date_of_joining", ""),
+        "tier": reg.get("tier", ""),
+        "designation": reg.get("designation", ""),
+        "location": reg.get("location", ""),
+        "business_unit": reg.get("business_unit", ""),
+        "competency": reg.get("competency", ""),
+        "co_supercoach": reg.get("co_supercoach", ""),
+        "enrolment_type": reg.get("enrolment_type", ""),
+        "reason_for_enrolment": reg.get("reason_for_enrolment", ""),
+        "status": "active",
+    }
+
+    if reg["role"] == "coach":
+        new_user.update({
+            "title": reg.get("designation", "Coach"),
+            "rating": 0,
+            "total_sessions": 0,
+            "slots": {"available": 3, "total": 3},
+            "certifications": [],
+            "expertise": [],
+            "domains": [],
+            "about": "",
+            "experience": "",
+        })
+    else:
+        new_user.update({
+            "job_title": reg.get("designation", ""),
+            "department": reg.get("business_unit", ""),
+        })
+
+    try:
+        await db.users.insert_one(new_user)
+    except Exception:
+        raise HTTPException(status_code=400, detail="Failed to create user. Email may already exist.")
+
+    await db.registrations.update_one(
+        {"id": reg_id},
+        {"$set": {"status": "approved", "approved_at": datetime.now(timezone.utc).isoformat(), "approved_by": user["id"]}},
+    )
+
+    return {"message": f"{reg['name']} has been approved as {reg['role']}. Default password: password123"}
+
+
+@router.put("/{reg_id}/reject")
+async def reject_registration(reg_id: str, user: dict = Depends(get_current_user)):
+    if user["role"] != "admin":
+        raise HTTPException(status_code=403, detail="Admin access required")
+
+    reg = await db.registrations.find_one({"id": reg_id}, {"_id": 0})
+    if not reg:
+        raise HTTPException(status_code=404, detail="Registration not found")
+    if reg["status"] != "pending":
+        raise HTTPException(status_code=400, detail="Registration already processed")
+
+    await db.registrations.update_one(
+        {"id": reg_id},
+        {"$set": {"status": "rejected", "rejected_at": datetime.now(timezone.utc).isoformat(), "rejected_by": user["id"]}},
+    )
+
+    return {"message": f"{reg['name']}'s registration has been rejected"}

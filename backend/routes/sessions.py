@@ -1,6 +1,7 @@
 from fastapi import APIRouter, HTTPException, Depends
 from database import db
 from models import CreateSessionBody, RescheduleBody
+from pydantic import BaseModel
 from routes.auth import get_current_user
 from helpers import create_notification, schedule_session_reminders
 import uuid
@@ -175,3 +176,40 @@ async def complete_session(session_id: str, user: dict = Depends(get_current_use
     )
 
     return {"message": "Session completed"}
+
+
+
+class SessionNoteBody(BaseModel):
+    content: str
+
+
+@router.post("/{session_id}/notes")
+async def add_session_note(session_id: str, body: SessionNoteBody, user: dict = Depends(get_current_user)):
+    session = await db.sessions.find_one({"id": session_id}, {"_id": 0})
+    if not session:
+        raise HTTPException(status_code=404, detail="Session not found")
+    if session["status"] != "completed":
+        raise HTTPException(status_code=400, detail="Can only add notes to completed sessions")
+    if session.get("coachee_id") != user["id"] and session.get("coach_id") != user["id"]:
+        raise HTTPException(status_code=403, detail="Not your session")
+
+    note = {
+        "id": str(uuid.uuid4()),
+        "session_id": session_id,
+        "user_id": user["id"],
+        "user_name": user["name"],
+        "user_role": user["role"],
+        "content": body.content.strip(),
+        "created_at": datetime.now(timezone.utc).isoformat(),
+    }
+    await db.session_notes.insert_one(note)
+    note.pop("_id", None)
+    return note
+
+
+@router.get("/{session_id}/notes")
+async def get_session_notes(session_id: str, user: dict = Depends(get_current_user)):
+    notes = await db.session_notes.find(
+        {"session_id": session_id}, {"_id": 0}
+    ).sort("created_at", -1).to_list(50)
+    return notes

@@ -313,7 +313,7 @@ class TestAdminDashboardAPIs:
         assert isinstance(data["coach_utilization"], list)
         assert isinstance(data["expertise_distribution"], list)
         
-        print(f"PASS: Admin trends returned with all chart data")
+        print("PASS: Admin trends returned with all chart data")
     
     def test_admin_trends_blocked_for_non_admin(self, coachee_token):
         """Test that non-admin cannot access admin trends (403)"""

@@ -15,14 +15,15 @@ class ApiService {
   }
 
   async request(endpoint, options = {}) {
-    const headers = { 'Content-Type': 'application/json', ...options.headers };
-    if (this.token) {
+    const { noAuth, ...fetchOptions } = options;
+    const headers = { 'Content-Type': 'application/json', ...fetchOptions.headers };
+    if (this.token && !noAuth) {
       headers['Authorization'] = `Bearer ${this.token}`;
     }
 
-    const response = await fetch(`${API_URL}${endpoint}`, { ...options, headers });
+    const response = await fetch(`${API_URL}${endpoint}`, { ...fetchOptions, headers });
 
-    if (response.status === 401) {
+    if (response.status === 401 && !noAuth) {
       this.setToken(null);
       window.location.href = '/login';
       throw new Error('Unauthorized');
@@ -77,6 +78,20 @@ class ApiService {
   getAdminCoachees() { return this.request('/api/admin/coachees'); }
   getAdminUserHistory(userId) { return this.request(`/api/admin/users/${userId}/history`); }
   getAdminTrends() { return this.request('/api/admin/trends'); }
+  getAdminMIS() { return this.request('/api/admin/mis'); }
+
+  // Registrations
+  submitRegistration(data) { return this.request('/api/registrations', { method: 'POST', body: JSON.stringify(data), noAuth: true }); }
+  getRegistrations(status = 'pending') { return this.request(`/api/registrations?status=${status}`); }
+  approveRegistration(id) { return this.request(`/api/registrations/${id}/approve`, { method: 'PUT' }); }
+  rejectRegistration(id) { return this.request(`/api/registrations/${id}/reject`, { method: 'PUT' }); }
+
+  // Session Notes
+  addSessionNote(sessionId, content) { return this.request(`/api/sessions/${sessionId}/notes`, { method: 'POST', body: JSON.stringify({ content }) }); }
+  getSessionNotes(sessionId) { return this.request(`/api/sessions/${sessionId}/notes`); }
+
+  // Public
+  getPublicStats() { return this.request('/api/public/stats', { noAuth: true }); }
 
   // Notifications
   getNotifications() { return this.request('/api/notifications'); }

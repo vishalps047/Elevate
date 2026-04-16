@@ -1,31 +1,34 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Button } from '../components/ui/button';
-import { Card, CardContent } from '../components/ui/card';
-import { Input } from '../components/ui/input';
-import { Label } from '../components/ui/label';
 import { useApp } from '../context/AppContext';
-import { Shield, TrendingUp, Award, Users, ChevronRight, Lock, Mail, AlertCircle, Building2 } from 'lucide-react';
+import { api } from '../services/api';
+import { Card, CardContent } from '../components/ui/card';
+import { Button } from '../components/ui/button';
+import { Shield, TrendingUp, Award, Users, ChevronRight, Lock, Mail, AlertCircle, Building2, UserPlus } from 'lucide-react';
 import { toast } from 'sonner';
+import RegistrationForm from '../components/RegistrationForm';
 
 export default function LoginPage() {
   const { login } = useApp();
   const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [showRegistration, setShowRegistration] = useState(false);
+  const [publicStats, setPublicStats] = useState(null);
+
+  useEffect(() => {
+    api.getPublicStats().then(setPublicStats).catch(() => {});
+  }, []);
 
   const handleLogin = async (e) => {
     e.preventDefault();
     setError('');
     setLoading(true);
     try {
-      const user = await login(email, password);
-      toast.success(`Welcome back, ${user.name}!`);
-      if (user.role === 'coach') navigate('/coach-dashboard');
-      else if (user.role === 'admin') navigate('/admin-dashboard');
-      else navigate('/');
+      await login(email, password);
+      navigate('/');
     } catch (err) {
       setError(err.message || 'Invalid credentials');
     } finally {
@@ -33,73 +36,72 @@ export default function LoginPage() {
     }
   };
 
-  const quickLogin = async (email) => {
-    setEmail(email);
-    setPassword('password123');
-    setError('');
-    setLoading(true);
-    try {
-      const user = await login(email, 'password123');
-      toast.success(`Welcome back, ${user.name}!`);
-      if (user.role === 'coach') navigate('/coach-dashboard');
-      else if (user.role === 'admin') navigate('/admin-dashboard');
-      else navigate('/');
-    } catch (err) {
-      setError(err.message || 'Login failed');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const demoAccounts = [
-    { label: 'Sarah (Coachee)', email: 'sarah@elevate.com', role: 'Coachee', color: 'text-primary', bg: 'bg-primary-subtle' },
-    { label: 'Alex (Coachee)', email: 'alex@elevate.com', role: 'Coachee', color: 'text-primary', bg: 'bg-primary-subtle' },
-    { label: 'Fatema (Coach)', email: 'fatema@elevate.com', role: 'Coach', color: 'text-accent', bg: 'bg-accent-subtle' },
-    { label: 'Vaishali (Coach)', email: 'vaishali@elevate.com', role: 'Coach', color: 'text-accent', bg: 'bg-accent-subtle' },
-    { label: 'Admin', email: 'admin@elevate.com', role: 'Admin', color: 'text-warning', bg: 'bg-yellow-50' },
-  ];
-
   return (
-    <div className="min-h-screen bg-background flex flex-col">
-      {/* Header */}
-      <div className="bg-gradient-primary px-6 py-6">
-        <div className="max-w-screen-lg mx-auto">
-          <div className="flex items-center gap-3 mb-6">
-            <div className="w-10 h-10 rounded-full border-2 border-white/40 flex items-center justify-center">
-              <span className="text-white font-heading font-bold text-sm">GT</span>
+    <div className="min-h-screen flex bg-background">
+      {/* Left Panel */}
+      <div className="hidden lg:flex lg:w-[55%] relative items-center justify-center overflow-hidden"
+        style={{ background: 'linear-gradient(135deg, hsl(271 65% 15%), hsl(267 55% 28%), hsl(271 45% 22%))' }}
+      >
+        <div className="absolute inset-0 opacity-5" style={{ backgroundImage: 'radial-gradient(circle at 20% 30%, white 1px, transparent 1px)', backgroundSize: '30px 30px' }} />
+        <div className="relative z-10 max-w-md px-10">
+          <div className="flex items-center gap-2.5 mb-8">
+            <div className="w-10 h-10 bg-white/10 backdrop-blur-sm rounded-xl flex items-center justify-center">
+              <Shield className="w-5 h-5 text-white" />
             </div>
-            <div className="flex items-center gap-2">
-              <span className="text-white/80 font-sans text-sm">Grant Thornton</span>
-              <span className="text-white/40">|</span>
-              <span className="text-white font-heading font-bold text-xl tracking-wide">Elevate</span>
+            <span className="font-heading font-bold text-2xl text-white tracking-wide">ELEVATE</span>
+          </div>
+          <h1 className="font-heading font-bold text-3xl text-white leading-tight mb-4">
+            Coaching that transforms <br />
+            <span className="text-white/70">#Great2Exceptional</span>
+          </h1>
+          <p className="text-white/60 text-sm leading-relaxed mb-8">
+            A personalized coaching platform connecting professionals with certified coaches to accelerate growth, build leadership skills, and go beyond.
+          </p>
+
+          {/* Platform stats */}
+          {publicStats && (
+            <div className="flex gap-4 mb-8">
+              <div className="bg-white/10 backdrop-blur-sm rounded-xl px-4 py-3 text-center" data-testid="stat-coaches">
+                <p className="text-xl font-bold text-white">{publicStats.coaches}</p>
+                <p className="text-xs text-white/60">Coaches</p>
+              </div>
+              <div className="bg-white/10 backdrop-blur-sm rounded-xl px-4 py-3 text-center" data-testid="stat-coachees">
+                <p className="text-xl font-bold text-white">{publicStats.coachees}</p>
+                <p className="text-xs text-white/60">Coachees</p>
+              </div>
+              <div className="bg-white/10 backdrop-blur-sm rounded-xl px-4 py-3 text-center" data-testid="stat-sessions">
+                <p className="text-xl font-bold text-white">{publicStats.sessions_completed}</p>
+                <p className="text-xs text-white/60">Sessions</p>
+              </div>
             </div>
-          </div>
-          <div className="max-w-xl">
-            <h1 className="text-3xl font-heading font-bold text-white mb-2">Welcome to ELEVATE</h1>
-            <p className="text-white/70 text-sm leading-relaxed">
-              A structured coaching platform connecting employees with certified coaches for goal-oriented professional development.
-            </p>
-          </div>
-          <div className="flex flex-wrap gap-4 mt-6">
+          )}
+
+          <div className="space-y-3">
             {[
-              { icon: Users, label: '50+ Active Coaches' },
-              { icon: TrendingUp, label: '248 Sessions Completed' },
-              { icon: Award, label: 'ICF Certified' },
-            ].map(item => (
-              <div key={item.label} className="flex items-center gap-2 text-white/80">
-                <item.icon className="w-4 h-4 text-accent" />
-                <span className="text-sm">{item.label}</span>
+              { icon: TrendingUp, text: '1:1 personalized coaching sessions' },
+              { icon: Award, text: 'Certified internal coaches' },
+              { icon: Users, text: 'Structured learning journeys' },
+            ].map((item, i) => (
+              <div key={i} className="flex items-center gap-3">
+                <div className="w-7 h-7 rounded-lg bg-white/10 flex items-center justify-center">
+                  <item.icon className="w-3.5 h-3.5 text-white/80" />
+                </div>
+                <span className="text-white/70 text-sm">{item.text}</span>
               </div>
             ))}
           </div>
         </div>
       </div>
 
-      {/* Login Form */}
-      <div className="flex-1 max-w-screen-lg mx-auto px-4 py-10 w-full">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-3xl mx-auto">
-          {/* Login Card */}
-          <Card className="shadow-card">
+      {/* Right Panel */}
+      <div className="flex-1 flex items-center justify-center px-6 py-12">
+        <div className="w-full max-w-sm">
+          <div className="lg:hidden flex items-center gap-2 mb-8 justify-center">
+            <Shield className="w-7 h-7 text-primary" />
+            <span className="font-heading font-bold text-xl">ELEVATE</span>
+          </div>
+
+          <Card className="shadow-card border-border">
             <CardContent className="p-6">
               <h2 className="font-heading font-bold text-lg text-foreground mb-1">Sign In</h2>
               <p className="text-muted-foreground text-sm mb-6">Enter your credentials to access the platform</p>
@@ -126,89 +128,62 @@ export default function LoginPage() {
               </div>
 
               <form onSubmit={handleLogin} className="space-y-4">
-                <div>
-                  <Label htmlFor="email" className="text-sm font-medium">Email</Label>
-                  <div className="relative mt-1">
-                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                    <Input
-                      id="email"
-                      type="email"
-                      placeholder="your.email@elevate.com"
-                      className="pl-10"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      data-testid="login-email-input"
-                      required
-                    />
-                  </div>
-                </div>
-
-                <div>
-                  <Label htmlFor="password" className="text-sm font-medium">Password</Label>
-                  <div className="relative mt-1">
-                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                    <Input
-                      id="password"
-                      type="password"
-                      placeholder="Enter your password"
-                      className="pl-10"
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      data-testid="login-password-input"
-                      required
-                    />
-                  </div>
-                </div>
-
                 {error && (
-                  <div className="flex items-center gap-2 text-red-600 text-sm bg-red-50 rounded-lg p-3 border border-red-200" data-testid="login-error">
-                    <AlertCircle className="w-4 h-4 flex-shrink-0" />
-                    <span>{error}</span>
+                  <div className="flex items-center gap-2 text-destructive text-xs bg-destructive/10 p-2.5 rounded-lg" data-testid="login-error">
+                    <AlertCircle className="w-3.5 h-3.5" /> {error}
                   </div>
                 )}
-
-                <Button
-                  type="submit"
-                  className="w-full bg-primary hover:bg-primary/90 text-white"
-                  disabled={loading}
-                  data-testid="login-submit-btn"
-                >
-                  {loading ? 'Signing in...' : 'Sign In'}
-                  <ChevronRight className="w-4 h-4 ml-2" />
+                <div>
+                  <label className="text-xs font-medium text-foreground mb-1.5 block">Email</label>
+                  <div className="relative">
+                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                    <input
+                      data-testid="login-email"
+                      type="email" value={email} onChange={(e) => setEmail(e.target.value)}
+                      className="w-full pl-10 pr-3 py-2.5 rounded-xl border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                      placeholder="you@company.com" required
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-foreground mb-1.5 block">Password</label>
+                  <div className="relative">
+                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                    <input
+                      data-testid="login-password"
+                      type="password" value={password} onChange={(e) => setPassword(e.target.value)}
+                      className="w-full pl-10 pr-3 py-2.5 rounded-xl border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                      placeholder="Enter your password" required
+                    />
+                  </div>
+                </div>
+                <Button data-testid="login-submit" type="submit" className="w-full h-11 bg-primary hover:bg-primary/90 text-white" disabled={loading}>
+                  {loading ? 'Signing in...' : <>Sign In <ChevronRight className="w-4 h-4 ml-1" /></>}
                 </Button>
               </form>
+
+              <div className="mt-4 pt-4 border-t border-border text-center">
+                <p className="text-xs text-muted-foreground mb-2">New to ELEVATE?</p>
+                <Button
+                  variant="outline"
+                  className="w-full gap-2 text-sm"
+                  onClick={() => setShowRegistration(true)}
+                  data-testid="register-btn"
+                >
+                  <UserPlus className="w-4 h-4" /> Register for the Platform
+                </Button>
+              </div>
             </CardContent>
           </Card>
 
-          {/* Quick Access */}
-          <div>
-            <h3 className="font-heading font-semibold text-sm text-foreground mb-3">Quick Demo Access</h3>
-            <p className="text-xs text-muted-foreground mb-4">Click any account below to sign in instantly. Password: <code className="bg-muted px-1.5 py-0.5 rounded text-xs">password123</code></p>
-            <div className="space-y-2">
-              {demoAccounts.map(acc => (
-                <button
-                  key={acc.email}
-                  onClick={() => quickLogin(acc.email)}
-                  disabled={loading}
-                  className="w-full flex items-center justify-between p-3 rounded-xl border border-border bg-card hover:bg-muted/50 transition-fast text-left"
-                  data-testid={`quick-login-${acc.email.split('@')[0]}`}
-                >
-                  <div>
-                    <p className="text-sm font-medium text-foreground">{acc.label}</p>
-                    <p className="text-xs text-muted-foreground">{acc.email}</p>
-                  </div>
-                  <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${acc.bg} ${acc.color}`}>{acc.role}</span>
-                </button>
-              ))}
-            </div>
-          </div>
+          <p className="text-xs text-muted-foreground text-center mt-6">
+            Grant Thornton Internal &middot; ELEVATE Coaching Platform
+          </p>
         </div>
-
-        <p className="text-center text-xs text-muted-foreground mt-8">
-          <Shield className="w-3.5 h-3.5 inline mr-1" />
-          This is a demo platform with pre-populated test accounts.
-        </p>
       </div>
+
+      {/* Registration Modal */}
+      {showRegistration && <RegistrationForm onClose={() => setShowRegistration(false)} />}
     </div>
   );
 }

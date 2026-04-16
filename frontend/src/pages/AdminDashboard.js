@@ -10,7 +10,8 @@ import { Progress } from '../components/ui/progress';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../components/ui/dialog';
 import {
   Users, Calendar, TrendingUp, Award, Clock, CheckCircle, BarChart3,
-  ChevronRight, Star, ArrowLeft, Pause, AlertCircle, BookOpen, Eye
+  ChevronRight, Star, ArrowLeft, Pause, AlertCircle, BookOpen, Eye,
+  UserPlus, ClipboardList, FileSpreadsheet, Check, X, MapPin, Building2
 } from 'lucide-react';
 import { toast } from 'sonner';
 import {
@@ -50,22 +51,29 @@ export default function AdminDashboard() {
   const [coaches, setCoaches] = useState([]);
   const [coachees, setCoachees] = useState([]);
   const [trends, setTrends] = useState(null);
+  const [registrations, setRegistrations] = useState([]);
+  const [mis, setMis] = useState(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('overview');
   const [userModal, setUserModal] = useState({ open: false, data: null, loading: false });
+  const [regFilter, setRegFilter] = useState('pending');
 
   const loadData = useCallback(async () => {
     try {
-      const [s, c, ce, t] = await Promise.all([
+      const [s, c, ce, t, r, m] = await Promise.all([
         api.getAdminStats(),
         api.getAdminCoaches(),
         api.getAdminCoachees(),
         api.getAdminTrends(),
+        api.getRegistrations('all'),
+        api.getAdminMIS(),
       ]);
       setStats(s);
       setCoaches(c);
       setCoachees(ce);
       setTrends(t);
+      setRegistrations(r);
+      setMis(m);
     } catch (e) {
       toast.error(e.message);
     } finally {
@@ -84,6 +92,22 @@ export default function AdminDashboard() {
       toast.error(e.message);
       setUserModal({ open: false, data: null, loading: false });
     }
+  };
+
+  const handleApproveReg = async (id) => {
+    try {
+      const res = await api.approveRegistration(id);
+      toast.success(res.message);
+      await loadData();
+    } catch (e) { toast.error(e.message); }
+  };
+
+  const handleRejectReg = async (id) => {
+    try {
+      const res = await api.rejectRegistration(id);
+      toast.success(res.message);
+      await loadData();
+    } catch (e) { toast.error(e.message); }
   };
 
   if (loading) {
@@ -127,8 +151,10 @@ export default function AdminDashboard() {
         <div className="flex gap-2 mb-6 border-b border-border pb-3 overflow-x-auto">
           {[
             { key: 'overview', label: 'Charts & Trends', icon: BarChart3 },
+            { key: 'registrations', label: `Registrations ${registrations.filter(r => r.status === 'pending').length ? `(${registrations.filter(r => r.status === 'pending').length})` : ''}`, icon: UserPlus },
             { key: 'coaches', label: 'Coaches', icon: Award },
             { key: 'coachees', label: 'Coachees', icon: Users },
+            { key: 'mis', label: 'MIS Reports', icon: FileSpreadsheet },
           ].map(t => (
             <Button
               key={t.key}
@@ -378,6 +404,215 @@ export default function AdminDashboard() {
             ))}
           </div>
         )}
+        {/* Registrations Tab */}
+        {activeTab === 'registrations' && (
+          <div>
+            <div className="flex gap-2 mb-4">
+              {['pending', 'approved', 'rejected', 'all'].map(f => (
+                <Button key={f} size="sm" variant={regFilter === f ? 'default' : 'outline'} className={`text-xs h-8 capitalize ${regFilter === f ? 'bg-primary text-white' : ''}`} onClick={() => setRegFilter(f)} data-testid={`reg-filter-${f}`}>
+                  {f} {f === 'pending' && registrations.filter(r => r.status === 'pending').length > 0 && <Badge className="ml-1 bg-warning/20 text-warning border-0 text-xs">{registrations.filter(r => r.status === 'pending').length}</Badge>}
+                </Button>
+              ))}
+            </div>
+            <div className="space-y-3">
+              {registrations.filter(r => regFilter === 'all' || r.status === regFilter).map(reg => (
+                <Card key={reg.id} className="shadow-card" data-testid={`reg-${reg.id}`}>
+                  <CardContent className="p-4">
+                    <div className="flex items-start gap-3">
+                      <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${reg.role === 'coach' ? 'bg-primary/10 text-primary' : 'bg-accent/10 text-accent'}`}>
+                        {reg.role === 'coach' ? <Award className="w-5 h-5" /> : <Users className="w-5 h-5" />}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <p className="text-sm font-semibold text-foreground">{reg.name}</p>
+                          <Badge variant="outline" className="text-xs capitalize">{reg.role}</Badge>
+                          <Badge className={`text-xs border-0 ${reg.status === 'pending' ? 'bg-warning/10 text-warning' : reg.status === 'approved' ? 'bg-success/10 text-success' : 'bg-destructive/10 text-destructive'}`}>{reg.status}</Badge>
+                        </div>
+                        <p className="text-xs text-muted-foreground">{reg.email}</p>
+                        <div className="flex flex-wrap gap-2 mt-2 text-xs">
+                          {reg.designation && <span className="bg-muted rounded px-2 py-0.5">{reg.designation}</span>}
+                          {reg.location && <span className="bg-muted rounded px-2 py-0.5">{reg.location}</span>}
+                          {reg.business_unit && <span className="bg-muted rounded px-2 py-0.5">{reg.business_unit}</span>}
+                          {reg.tier && <span className="bg-muted rounded px-2 py-0.5">{reg.tier}</span>}
+                          {reg.enrolment_type && <span className="bg-primary/10 text-primary rounded px-2 py-0.5">{reg.enrolment_type}</span>}
+                        </div>
+                        {reg.reason_for_enrolment && <p className="text-xs text-muted-foreground mt-2 line-clamp-2">"{reg.reason_for_enrolment}"</p>}
+                        {reg.nominated_by && <p className="text-xs text-muted-foreground mt-1">Nominated by: <strong>{reg.nominated_by}</strong></p>}
+                        {reg.nominated_coachees?.length > 0 && (
+                          <div className="mt-2">
+                            <p className="text-xs font-medium text-foreground mb-1">Nominated Coachees:</p>
+                            <div className="flex flex-wrap gap-1.5">{reg.nominated_coachees.map((n, i) => <Badge key={i} variant="outline" className="text-xs">{n.name} ({n.email})</Badge>)}</div>
+                          </div>
+                        )}
+                      </div>
+                      {reg.status === 'pending' && (
+                        <div className="flex gap-2 flex-shrink-0">
+                          <Button size="sm" className="bg-success hover:bg-success/90 text-white text-xs h-8" onClick={() => handleApproveReg(reg.id)} data-testid={`approve-reg-${reg.id}`}>
+                            <Check className="w-3.5 h-3.5 mr-1" /> Approve
+                          </Button>
+                          <Button size="sm" variant="outline" className="text-xs h-8 text-destructive border-destructive/30" onClick={() => handleRejectReg(reg.id)} data-testid={`reject-reg-${reg.id}`}>
+                            <X className="w-3.5 h-3.5 mr-1" /> Reject
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+              {registrations.filter(r => regFilter === 'all' || r.status === regFilter).length === 0 && (
+                <div className="text-center py-12 text-muted-foreground">
+                  <ClipboardList className="w-10 h-10 mx-auto mb-2 opacity-40" />
+                  <p className="text-sm">No {regFilter !== 'all' ? regFilter : ''} registrations</p>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* MIS Reports Tab */}
+        {activeTab === 'mis' && mis && (
+          <div className="space-y-6">
+            {/* Coach Occupancy Table */}
+            <Card className="shadow-card">
+              <CardContent className="p-5">
+                <h3 className="font-heading font-semibold text-sm text-foreground mb-4">Coach Occupancy</h3>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-xs">
+                    <thead>
+                      <tr className="border-b border-border">
+                        <th className="text-left py-2 px-3 font-semibold text-muted-foreground">Coach</th>
+                        <th className="text-left py-2 px-3 font-semibold text-muted-foreground">Designation</th>
+                        <th className="text-left py-2 px-3 font-semibold text-muted-foreground">Location</th>
+                        <th className="text-left py-2 px-3 font-semibold text-muted-foreground">BU</th>
+                        <th className="text-center py-2 px-3 font-semibold text-muted-foreground">Capacity</th>
+                        <th className="text-center py-2 px-3 font-semibold text-muted-foreground">Assigned</th>
+                        <th className="text-center py-2 px-3 font-semibold text-muted-foreground">Remaining</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {mis.coach_occupancy.map(c => (
+                        <tr key={c.id} className="border-b border-border/50 hover:bg-muted/30 cursor-pointer" onClick={() => openUserHistory(c.id)}>
+                          <td className="py-2.5 px-3 font-medium text-foreground">{c.name}</td>
+                          <td className="py-2.5 px-3 text-muted-foreground">{c.designation}</td>
+                          <td className="py-2.5 px-3 text-muted-foreground">{c.location}</td>
+                          <td className="py-2.5 px-3 text-muted-foreground">{c.business_unit}</td>
+                          <td className="py-2.5 px-3 text-center font-medium">{c.capacity}</td>
+                          <td className="py-2.5 px-3 text-center"><Badge className="bg-primary/10 text-primary border-0 text-xs">{c.assigned}</Badge></td>
+                          <td className="py-2.5 px-3 text-center"><Badge className={`border-0 text-xs ${c.remaining > 0 ? 'bg-success/10 text-success' : 'bg-destructive/10 text-destructive'}`}>{c.remaining}</Badge></td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Coachee Status Table */}
+            <Card className="shadow-card">
+              <CardContent className="p-5">
+                <h3 className="font-heading font-semibold text-sm text-foreground mb-4">Coachee Status Report</h3>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-xs">
+                    <thead>
+                      <tr className="border-b border-border">
+                        <th className="text-left py-2 px-3 font-semibold text-muted-foreground">Coachee</th>
+                        <th className="text-left py-2 px-3 font-semibold text-muted-foreground">Designation</th>
+                        <th className="text-left py-2 px-3 font-semibold text-muted-foreground">Location</th>
+                        <th className="text-left py-2 px-3 font-semibold text-muted-foreground">BU</th>
+                        <th className="text-left py-2 px-3 font-semibold text-muted-foreground">Tier</th>
+                        <th className="text-left py-2 px-3 font-semibold text-muted-foreground">Enrolment</th>
+                        <th className="text-left py-2 px-3 font-semibold text-muted-foreground">Assigned Coach</th>
+                        <th className="text-center py-2 px-3 font-semibold text-muted-foreground">Sessions</th>
+                        <th className="text-left py-2 px-3 font-semibold text-muted-foreground">Status</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {mis.coachee_statuses.map(c => (
+                        <tr key={c.id} className="border-b border-border/50 hover:bg-muted/30 cursor-pointer" onClick={() => openUserHistory(c.id)}>
+                          <td className="py-2.5 px-3 font-medium text-foreground">{c.name}</td>
+                          <td className="py-2.5 px-3 text-muted-foreground">{c.designation}</td>
+                          <td className="py-2.5 px-3 text-muted-foreground">{c.location}</td>
+                          <td className="py-2.5 px-3 text-muted-foreground">{c.business_unit}</td>
+                          <td className="py-2.5 px-3"><Badge variant="outline" className="text-xs">{c.tier}</Badge></td>
+                          <td className="py-2.5 px-3 text-muted-foreground">{c.enrolment_type}</td>
+                          <td className="py-2.5 px-3 text-muted-foreground">{c.assigned_coach || '-'}</td>
+                          <td className="py-2.5 px-3 text-center font-medium">{c.sessions_completed}</td>
+                          <td className="py-2.5 px-3"><Badge className={`border-0 text-xs ${
+                            c.coaching_status === 'Undergoing Coaching' ? 'bg-success/10 text-success' :
+                            c.coaching_status === 'Completed' ? 'bg-primary/10 text-primary' :
+                            c.coaching_status === 'Paused' ? 'bg-warning/10 text-warning' :
+                            c.coaching_status === 'Pending Assignment' ? 'bg-accent/10 text-accent' :
+                            'bg-muted text-muted-foreground'
+                          }`}>{c.coaching_status}</Badge></td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Charts Row */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Location Distribution */}
+              <Card className="shadow-card">
+                <CardContent className="p-5">
+                  <h3 className="font-heading font-semibold text-sm text-foreground mb-4">Location Distribution</h3>
+                  {mis.location_distribution?.length > 0 ? (
+                    <ResponsiveContainer width="100%" height={260}>
+                      <BarChart data={mis.location_distribution}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                        <XAxis dataKey="location" tick={{ fontSize: 11 }} />
+                        <YAxis tick={{ fontSize: 11 }} />
+                        <Tooltip contentStyle={{ borderRadius: '8px', fontSize: '12px' }} />
+                        <Legend wrapperStyle={{ fontSize: '11px' }} />
+                        <Bar dataKey="coaches" fill="hsl(271, 65%, 28%)" name="Coaches" radius={[4, 4, 0, 0]} />
+                        <Bar dataKey="coachees" fill="hsl(142, 71%, 42%)" name="Coachees" radius={[4, 4, 0, 0]} />
+                      </BarChart>
+                    </ResponsiveContainer>
+                  ) : <div className="h-64 flex items-center justify-center text-sm text-muted-foreground">No location data</div>}
+                </CardContent>
+              </Card>
+
+              {/* Business Unit Distribution */}
+              <Card className="shadow-card">
+                <CardContent className="p-5">
+                  <h3 className="font-heading font-semibold text-sm text-foreground mb-4">Business Unit Distribution</h3>
+                  {mis.business_unit_distribution?.length > 0 ? (
+                    <ResponsiveContainer width="100%" height={260}>
+                      <PieChart>
+                        <Pie data={mis.business_unit_distribution} cx="50%" cy="50%" outerRadius={90} innerRadius={45} dataKey="value" nameKey="name"
+                          label={({ name, percent }) => `${name.length > 15 ? name.substring(0,15)+'...' : name} ${(percent*100).toFixed(0)}%`} labelLine={false}>
+                          {mis.business_unit_distribution.map((_, i) => <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />)}
+                        </Pie>
+                        <Tooltip contentStyle={{ borderRadius: '8px', fontSize: '12px' }} />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  ) : <div className="h-64 flex items-center justify-center text-sm text-muted-foreground">No BU data</div>}
+                </CardContent>
+              </Card>
+
+              {/* Nomination Breakdown */}
+              {mis.nomination_breakdown?.length > 0 && (
+                <Card className="shadow-card">
+                  <CardContent className="p-5">
+                    <h3 className="font-heading font-semibold text-sm text-foreground mb-4">Nomination Type Breakdown</h3>
+                    <ResponsiveContainer width="100%" height={260}>
+                      <PieChart>
+                        <Pie data={mis.nomination_breakdown} cx="50%" cy="50%" outerRadius={90} innerRadius={45} dataKey="count" nameKey="type"
+                          label={({ type, percent }) => `${type} ${(percent*100).toFixed(0)}%`} labelLine={false}>
+                          {mis.nomination_breakdown.map((_, i) => <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />)}
+                        </Pie>
+                        <Tooltip contentStyle={{ borderRadius: '8px', fontSize: '12px' }} />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  </CardContent>
+                </Card>
+              )}
+            </div>
+          </div>
+        )}
+
       </div>
 
       {/* User Detail Modal */}

@@ -95,12 +95,22 @@ async def seed_database():
                 "name": "Sarah Johnson", "role": "coachee",
                 "job_title": "Senior Associate", "department": "Audit & Assurance",
                 "avatar": "https://randomuser.me/api/portraits/women/10.jpg",
+                "tier": "T2", "designation": "Manager", "location": "MUM",
+                "business_unit": "Audit & Assurance", "competency": "External Audit",
+                "date_of_joining": "2020-06-15",
+                "enrolment_type": "Self-nomination",
+                "reason_for_enrolment": "To develop leadership skills and prepare for the next level of my career.",
             },
             {
                 "id": "coachee-2", "email": "alex@elevate.com", "password_hash": pwd,
                 "name": "Alex Morgan", "role": "coachee",
                 "job_title": "Assistant Manager", "department": "Advisory",
                 "avatar": "https://randomuser.me/api/portraits/men/23.jpg",
+                "tier": "T3", "designation": "Assistant Manager", "location": "DEL",
+                "business_unit": "ESG & Risk Consulting", "competency": "FS Risk",
+                "date_of_joining": "2021-03-22",
+                "enrolment_type": "Coach-nominated",
+                "reason_for_enrolment": "Nominated by supervisor to build public speaking and stakeholder management skills.",
             },
         ]
         admin = {

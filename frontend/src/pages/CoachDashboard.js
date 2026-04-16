@@ -423,27 +423,44 @@ export default function CoachDashboard() {
                   </div>
                 ) : (
                   <div className="space-y-3">
-                    {pendingRequests.map(req => (
-                      <div key={req.id} className="flex items-center gap-3 bg-muted/50 rounded-xl p-4 border border-border" data-testid={`request-${req.id}`}>
-                        <Avatar className="w-10 h-10">
-                          <AvatarImage src={req.coachee_avatar} />
-                          <AvatarFallback>{req.coachee_name?.[0]}</AvatarFallback>
-                        </Avatar>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-semibold text-foreground">{req.coachee_name}</p>
-                          <p className="text-xs text-muted-foreground">{req.coachee_role} · {req.mentorship_area}</p>
-                          <p className="text-xs text-muted-foreground mt-0.5 line-clamp-1">{req.goals}</p>
+                    {pendingRequests.map(req => {
+                      const profile = req.coachee_profile || {};
+                      return (
+                        <div key={req.id} className="bg-muted/50 rounded-xl p-4 border border-border" data-testid={`request-${req.id}`}>
+                          <div className="flex items-center gap-3 mb-3">
+                            <Avatar className="w-10 h-10">
+                              <AvatarImage src={req.coachee_avatar} />
+                              <AvatarFallback>{req.coachee_name?.[0]}</AvatarFallback>
+                            </Avatar>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-semibold text-foreground">{req.coachee_name}</p>
+                              <p className="text-xs text-muted-foreground">{req.coachee_role} · {req.mentorship_area}</p>
+                            </div>
+                            <div className="flex gap-2 flex-shrink-0">
+                              <Button size="sm" className="bg-primary text-white text-xs h-8" onClick={() => setActionModal({ open: true, request: req, action: 'accept' })} data-testid={`accept-btn-${req.id}`}>
+                                <CheckCircle className="w-3.5 h-3.5 mr-1" /> Accept
+                              </Button>
+                              <Button size="sm" variant="outline" className="text-xs h-8 text-destructive border-destructive/30" onClick={() => setActionModal({ open: true, request: req, action: 'decline' })} data-testid={`decline-btn-${req.id}`}>
+                                <XCircle className="w-3.5 h-3.5 mr-1" /> Decline
+                              </Button>
+                            </div>
+                          </div>
+                          {/* Coachee Profile Details */}
+                          {(profile.tier || profile.designation || profile.business_unit) && (
+                            <div className="grid grid-cols-2 md:grid-cols-3 gap-2 mb-2 text-xs">
+                              {profile.tier && <div className="bg-background rounded-lg px-2 py-1.5 border border-border"><span className="text-muted-foreground">Tier: </span><span className="font-medium text-foreground">{profile.tier}</span></div>}
+                              {profile.designation && <div className="bg-background rounded-lg px-2 py-1.5 border border-border"><span className="text-muted-foreground">Designation: </span><span className="font-medium text-foreground">{profile.designation}</span></div>}
+                              {profile.location && <div className="bg-background rounded-lg px-2 py-1.5 border border-border"><span className="text-muted-foreground">Location: </span><span className="font-medium text-foreground">{profile.location}</span></div>}
+                              {profile.business_unit && <div className="bg-background rounded-lg px-2 py-1.5 border border-border"><span className="text-muted-foreground">BU: </span><span className="font-medium text-foreground">{profile.business_unit}</span></div>}
+                              {profile.competency && <div className="bg-background rounded-lg px-2 py-1.5 border border-border"><span className="text-muted-foreground">Competency: </span><span className="font-medium text-foreground">{profile.competency}</span></div>}
+                              {profile.enrolment_type && <div className="bg-background rounded-lg px-2 py-1.5 border border-border"><span className="text-muted-foreground">Enrolment: </span><span className="font-medium text-foreground">{profile.enrolment_type}</span></div>}
+                            </div>
+                          )}
+                          {req.goals && <p className="text-xs text-muted-foreground line-clamp-2"><span className="font-medium text-foreground">Goals: </span>{req.goals}</p>}
+                          {profile.reason_for_enrolment && <p className="text-xs text-muted-foreground mt-1 line-clamp-2"><span className="font-medium text-foreground">Reason: </span>{profile.reason_for_enrolment}</p>}
                         </div>
-                        <div className="flex gap-2 flex-shrink-0">
-                          <Button size="sm" className="bg-primary text-white text-xs h-8" onClick={() => setActionModal({ open: true, request: req, action: 'accept' })} data-testid={`accept-btn-${req.id}`}>
-                            <CheckCircle className="w-3.5 h-3.5 mr-1" /> Accept
-                          </Button>
-                          <Button size="sm" variant="outline" className="text-xs h-8 text-destructive border-destructive/30" onClick={() => setActionModal({ open: true, request: req, action: 'decline' })} data-testid={`decline-btn-${req.id}`}>
-                            <XCircle className="w-3.5 h-3.5 mr-1" /> Decline
-                          </Button>
-                        </div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 )}
               </CardContent>

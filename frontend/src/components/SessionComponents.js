@@ -5,13 +5,45 @@ import { Button } from './ui/button';
 import { Badge } from './ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from './ui/dialog';
-import { Calendar, Clock, Video, RefreshCw, CheckCircle } from 'lucide-react';
+import { Calendar, Clock, Video, RefreshCw, CheckCircle, MessageSquare, Send, ChevronDown, ChevronUp } from 'lucide-react';
 
 export function SessionCard({ session, role, onReschedule, onComplete }) {
+  const [showNotes, setShowNotes] = useState(false);
+  const [notes, setNotes] = useState([]);
+  const [newNote, setNewNote] = useState('');
+  const [loadingNotes, setLoadingNotes] = useState(false);
+  const [submittingNote, setSubmittingNote] = useState(false);
+
   const isUpcoming = session.status === 'upcoming';
+  const isCompleted = session.status === 'completed';
   const otherPerson = role === 'coachee'
     ? { name: session.coach_name, avatar: session.coach_avatar }
     : { name: session.coachee_name, avatar: session.coachee_avatar };
+
+  const toggleNotes = async () => {
+    if (!showNotes) {
+      setLoadingNotes(true);
+      try {
+        const data = await api.getSessionNotes(session.id);
+        setNotes(data);
+      } catch { setNotes([]); }
+      setLoadingNotes(false);
+    }
+    setShowNotes(!showNotes);
+  };
+
+  const handleAddNote = async () => {
+    if (!newNote.trim()) return;
+    setSubmittingNote(true);
+    try {
+      const note = await api.addSessionNote(session.id, newNote.trim());
+      setNotes([note, ...notes]);
+      setNewNote('');
+    } catch (e) {
+      // toast error handled by caller
+    }
+    setSubmittingNote(false);
+  };
 
   return (
     <Card className="shadow-card hover:shadow-md transition-smooth" data-testid={`session-${session.id}`}>
@@ -34,24 +66,71 @@ export function SessionCard({ session, role, onReschedule, onComplete }) {
             <span className="flex items-center gap-1"><Video className="w-3 h-3" /> {session.duration}m</span>
           </div>
         </div>
-        {isUpcoming && (
-          <div className="flex gap-2 flex-shrink-0">
-            <Button size="sm" variant="outline" className="text-xs h-7 px-2" onClick={() => onReschedule(session)} data-testid={`reschedule-btn-${session.id}`}>
-              <RefreshCw className="w-3 h-3 mr-1" /> Reschedule
+        <div className="flex gap-2 flex-shrink-0">
+          {isUpcoming && (
+            <>
+              <Button size="sm" variant="outline" className="text-xs h-7 px-2" onClick={() => onReschedule(session)} data-testid={`reschedule-btn-${session.id}`}>
+                <RefreshCw className="w-3 h-3 mr-1" /> Reschedule
+              </Button>
+              {onComplete && (
+                <Button size="sm" variant="outline" className="text-xs h-7 px-2 text-success border-success/30 hover:bg-success/10" onClick={() => onComplete(session)} data-testid={`complete-btn-${session.id}`}>
+                  <CheckCircle className="w-3 h-3 mr-1" /> Complete
+                </Button>
+              )}
+              {session.meeting_link && (
+                <Button size="sm" className="bg-primary text-white text-xs h-7 px-3" asChild>
+                  <a href={session.meeting_link} target="_blank" rel="noopener noreferrer">Join</a>
+                </Button>
+              )}
+            </>
+          )}
+          {isCompleted && (
+            <Button size="sm" variant="ghost" className="text-xs h-7 px-2 text-muted-foreground" onClick={toggleNotes} data-testid={`notes-toggle-${session.id}`}>
+              <MessageSquare className="w-3 h-3 mr-1" /> Notes
+              {showNotes ? <ChevronUp className="w-3 h-3 ml-0.5" /> : <ChevronDown className="w-3 h-3 ml-0.5" />}
             </Button>
-            {onComplete && (
-              <Button size="sm" variant="outline" className="text-xs h-7 px-2 text-success border-success/30 hover:bg-success/10" onClick={() => onComplete(session)} data-testid={`complete-btn-${session.id}`}>
-                <CheckCircle className="w-3 h-3 mr-1" /> Complete
-              </Button>
-            )}
-            {session.meeting_link && (
-              <Button size="sm" className="bg-primary text-white text-xs h-7 px-3" asChild>
-                <a href={session.meeting_link} target="_blank" rel="noopener noreferrer">Join</a>
-              </Button>
-            )}
-          </div>
-        )}
+          )}
+        </div>
       </div>
+
+      {/* Notes Section */}
+      {showNotes && isCompleted && (
+        <div className="border-t border-border px-4 py-3 bg-muted/20" data-testid={`notes-section-${session.id}`}>
+          {/* Add Note */}
+          <div className="flex gap-2 mb-3">
+            <input
+              className="flex-1 rounded-lg border border-border bg-background px-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-primary/30"
+              placeholder="Add a note about this session..."
+              value={newNote}
+              onChange={e => setNewNote(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && handleAddNote()}
+              data-testid={`note-input-${session.id}`}
+            />
+            <Button size="sm" className="text-xs h-8 px-3 bg-primary text-white" onClick={handleAddNote} disabled={submittingNote || !newNote.trim()} data-testid={`add-note-btn-${session.id}`}>
+              <Send className="w-3 h-3" />
+            </Button>
+          </div>
+          {/* Notes List */}
+          {loadingNotes ? (
+            <p className="text-xs text-muted-foreground text-center py-2">Loading...</p>
+          ) : notes.length === 0 ? (
+            <p className="text-xs text-muted-foreground text-center py-2">No notes yet. Add your reflections from this session.</p>
+          ) : (
+            <div className="space-y-2 max-h-40 overflow-y-auto">
+              {notes.map(note => (
+                <div key={note.id} className="bg-background rounded-lg p-2.5 border border-border">
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="text-xs font-medium text-foreground">{note.user_name}</span>
+                    <Badge variant="outline" className="text-xs px-1.5 py-0">{note.user_role}</Badge>
+                    <span className="text-xs text-muted-foreground ml-auto">{new Date(note.created_at).toLocaleDateString()}</span>
+                  </div>
+                  <p className="text-xs text-muted-foreground">{note.content}</p>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
     </Card>
   );
 }

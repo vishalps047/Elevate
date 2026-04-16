@@ -190,7 +190,7 @@ class TestFeedbackValidation:
             }
         )
         # Should not be 422 (validation error) - could be 200 or 400 (already submitted)
-        assert response.status_code != 422, f"Suggestions should be optional, got 422"
+        assert response.status_code != 422, "Suggestions should be optional, got 422"
 
 
 class TestFeedbackSubmission:
