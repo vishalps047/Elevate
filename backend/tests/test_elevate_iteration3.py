@@ -15,7 +15,7 @@ COACHEE2_EMAIL = "alex@elevate.com"
 COACH_EMAIL = "fatema@elevate.com"
 COACH2_EMAIL = "vaishali@elevate.com"
 COACH3_EMAIL = "gaurav@elevate.com"
-PASSWORD = "password123"
+PASSWORD = os.environ.get("TEST_PASSWORD", "password123")
 
 
 @pytest.fixture

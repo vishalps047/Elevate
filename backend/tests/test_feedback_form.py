@@ -18,9 +18,9 @@ BASE_URL = os.environ.get('REACT_APP_BACKEND_URL').rstrip('/')
 
 # Test credentials
 ALEX_EMAIL = "alex@elevate.com"
-ALEX_PASSWORD = "password123"
+ALEX_PASSWORD = os.environ.get("TEST_PASSWORD", "password123")
 COACH_EMAIL = "fatema@elevate.com"
-COACH_PASSWORD = "password123"
+COACH_PASSWORD = os.environ.get("TEST_PASSWORD", "password123")
 
 # Alex's completed journey request ID
 ALEX_REQUEST_ID = "b5a1dc88-63d4-4b9b-a10b-95f5094900ad"

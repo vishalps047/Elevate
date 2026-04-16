@@ -19,11 +19,11 @@ BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', '').rstrip('/')
 
 # Test credentials
 ADMIN_EMAIL = "admin@elevate.com"
-ADMIN_PASSWORD = "password123"
+ADMIN_PASSWORD = os.environ.get("TEST_PASSWORD", "password123")
 COACH_EMAIL = "fatema@elevate.com"
-COACH_PASSWORD = "password123"
+COACH_PASSWORD = os.environ.get("TEST_PASSWORD", "password123")
 COACHEE_EMAIL = "sarah@elevate.com"
-COACHEE_PASSWORD = "password123"
+COACHEE_PASSWORD = os.environ.get("TEST_PASSWORD", "password123")
 
 
 @pytest.fixture(scope="module")
@@ -260,7 +260,7 @@ class TestRegistrationApproval:
         # Verify user was created by trying to login
         login_resp = requests.post(f"{BASE_URL}/api/auth/login", json={
             "email": unique_email,
-            "password": "password123"  # Default password
+            "password": os.environ.get("TEST_PASSWORD", "password123")  # Default password
         })
         assert login_resp.status_code == 200, "Approved user should be able to login"
         print("Approved user can login successfully")
@@ -360,7 +360,7 @@ class TestSessionNotes:
         # Login as Gaurav (coach-3) who has the past sessions with Sarah
         login_resp = requests.post(f"{BASE_URL}/api/auth/login", json={
             "email": "gaurav@elevate.com",
-            "password": "password123"
+            "password": os.environ.get("TEST_PASSWORD", "password123")
         })
         assert login_resp.status_code == 200
         coach_token = login_resp.json()["token"]

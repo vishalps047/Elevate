@@ -29,7 +29,9 @@ export const AppProvider = ({ children }) => {
     try {
       const notifs = await api.getNotifications();
       setNotifications(notifs);
-    } catch (e) { /* silent */ }
+    } catch (err) {
+      if (process.env.NODE_ENV === 'development') console.error('Notification fetch failed:', err);
+    }
   }, [token]);
 
   useEffect(() => {
@@ -62,14 +64,18 @@ export const AppProvider = ({ children }) => {
     try {
       await api.markAllRead();
       setNotifications(prev => prev.map(n => ({ ...n, read: true })));
-    } catch (e) { /* silent */ }
+    } catch (err) {
+      if (process.env.NODE_ENV === 'development') console.error('Mark all read failed:', err);
+    }
   };
 
   const markRead = async (id) => {
     try {
       await api.markRead(id);
       setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
-    } catch (e) { /* silent */ }
+    } catch (err) {
+      if (process.env.NODE_ENV === 'development') console.error('Mark read failed:', err);
+    }
   };
 
   return (

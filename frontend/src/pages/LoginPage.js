@@ -17,6 +17,26 @@ export default function LoginPage() {
   const [error, setError] = useState('');
   const [showRegistration, setShowRegistration] = useState(false);
   const [publicStats, setPublicStats] = useState(null);
+  const [demoLoading, setDemoLoading] = useState('');
+
+  const demoAccounts = [
+    { label: 'Coach', email: 'fatema@elevate.com', password: 'password123', icon: Award },
+    { label: 'Coachee', email: 'sarah@elevate.com', password: 'password123', icon: Users },
+    { label: 'Admin', email: 'admin@elevate.com', password: 'password123', icon: Shield },
+  ];
+
+  const handleDemoLogin = async (account) => {
+    setError('');
+    setDemoLoading(account.label);
+    try {
+      await login(account.email, account.password);
+      navigate('/');
+    } catch (err) {
+      setError(err.message || 'Demo login failed');
+    } finally {
+      setDemoLoading('');
+    }
+  };
 
   useEffect(() => {
     api.getPublicStats().then(setPublicStats).catch(() => {});
@@ -78,11 +98,11 @@ export default function LoginPage() {
 
           <div className="space-y-3">
             {[
-              { icon: TrendingUp, text: '1:1 personalized coaching sessions' },
-              { icon: Award, text: 'Certified internal coaches' },
-              { icon: Users, text: 'Structured learning journeys' },
-            ].map((item, i) => (
-              <div key={i} className="flex items-center gap-3">
+              { key: 'personalized', icon: TrendingUp, text: '1:1 personalized coaching sessions' },
+              { key: 'certified', icon: Award, text: 'Certified internal coaches' },
+              { key: 'structured', icon: Users, text: 'Structured learning journeys' },
+            ].map((item) => (
+              <div key={item.key} className="flex items-center gap-3">
                 <div className="w-7 h-7 rounded-lg bg-white/10 flex items-center justify-center">
                   <item.icon className="w-3.5 h-3.5 text-white/80" />
                 </div>
@@ -172,6 +192,33 @@ export default function LoginPage() {
                 >
                   <UserPlus className="w-4 h-4" /> Register for the Platform
                 </Button>
+              </div>
+
+              {/* Demo Quick Login */}
+              <div className="mt-4 pt-4 border-t border-dashed border-border">
+                <p className="text-xs text-muted-foreground text-center mb-3">Demo Access</p>
+                <div className="grid grid-cols-3 gap-2">
+                  {demoAccounts.map((account) => (
+                    <Button
+                      key={account.label}
+                      variant="ghost"
+                      size="sm"
+                      className="h-9 text-xs font-medium gap-1.5 border border-border/50 hover:border-primary/40 hover:bg-primary/5 transition-colors"
+                      onClick={() => handleDemoLogin(account)}
+                      disabled={!!demoLoading}
+                      data-testid={`demo-login-${account.label.toLowerCase()}`}
+                    >
+                      {demoLoading === account.label ? (
+                        <span className="animate-pulse">...</span>
+                      ) : (
+                        <>
+                          <account.icon className="w-3 h-3" />
+                          {account.label}
+                        </>
+                      )}
+                    </Button>
+                  ))}
+                </div>
               </div>
             </CardContent>
           </Card>

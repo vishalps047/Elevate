@@ -16,7 +16,7 @@ COACH_EMAIL = "fatema@elevate.com"
 COACH2_EMAIL = "vaishali@elevate.com"
 COACH3_EMAIL = "gaurav@elevate.com"
 ADMIN_EMAIL = "admin@elevate.com"
-PASSWORD = "password123"
+PASSWORD = os.environ.get("TEST_PASSWORD", "password123")
 
 
 class TestAuth:

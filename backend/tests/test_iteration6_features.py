@@ -15,11 +15,11 @@ BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', '').rstrip('/')
 
 # Test credentials
 ADMIN_EMAIL = "admin@elevate.com"
-ADMIN_PASSWORD = "password123"
+ADMIN_PASSWORD = os.environ.get("TEST_PASSWORD", "password123")
 COACH_EMAIL = "fatema@elevate.com"
-COACH_PASSWORD = "password123"
+COACH_PASSWORD = os.environ.get("TEST_PASSWORD", "password123")
 COACHEE_EMAIL = "sarah@elevate.com"
-COACHEE_PASSWORD = "password123"
+COACHEE_PASSWORD = os.environ.get("TEST_PASSWORD", "password123")
 WRONG_PASSWORD = "wrongpassword"
 
 

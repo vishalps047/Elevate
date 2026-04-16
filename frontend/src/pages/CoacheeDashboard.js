@@ -95,7 +95,7 @@ export default function CoacheeDashboard() {
       setActiveRequest(reqRes.request);
       setAllSessions(sessRes);
     } catch (e) {
-      console.error(e);
+      toast.error('Failed to load dashboard data');
     } finally {
       setLoading(false);
     }
@@ -359,8 +359,8 @@ export default function CoacheeDashboard() {
                     <strong className="text-foreground ml-1">{activeRequest.preferences[activeRequest.current_preference_index]?.coach_name}</strong>
                   </p>
                   <div className="flex gap-2 mt-3 flex-wrap">
-                    {activeRequest.preferences.map((pref, i) => (
-                      <div key={i} className={`text-xs px-3 py-1.5 rounded-lg border ${
+                    {activeRequest.preferences.map((pref) => (
+                      <div key={pref.coach_id} className={`text-xs px-3 py-1.5 rounded-lg border ${
                         pref.status === 'pending' ? 'bg-primary-subtle border-primary/30 text-primary font-medium' :
                         pref.status === 'declined' ? 'bg-destructive/10 border-destructive/30 text-destructive line-through' :
                         'bg-muted border-border text-muted-foreground'

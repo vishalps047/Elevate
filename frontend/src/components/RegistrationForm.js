@@ -194,7 +194,7 @@ export default function RegistrationForm({ onClose }) {
                 {nominees.length > 0 && (
                   <div className="flex flex-wrap gap-1.5 mb-2">
                     {nominees.map((n, i) => (
-                      <Badge key={i} variant="outline" className="text-xs gap-1 pr-1">
+                      <Badge key={n.email} variant="outline" className="text-xs gap-1 pr-1">
                         {n.name}
                         <button type="button" onClick={() => removeNominee(i)} className="hover:text-destructive"><X className="w-3 h-3" /></button>
                       </Badge>

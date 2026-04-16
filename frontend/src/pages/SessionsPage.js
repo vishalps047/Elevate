@@ -19,7 +19,7 @@ export default function SessionsPage() {
       const data = await api.getSessions();
       setSessions(data);
     } catch (e) {
-      console.error(e);
+      toast.error('Failed to load data');
     } finally {
       setLoading(false);
     }

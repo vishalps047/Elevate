@@ -12,6 +12,7 @@ router = APIRouter(prefix="/sessions", tags=["sessions"])
 
 @router.get("")
 async def list_sessions(user: dict = Depends(get_current_user)):
+    sessions = []
     if user["role"] == "coach":
         sessions = await db.sessions.find(
             {"coach_id": user["id"]}, {"_id": 0}

@@ -26,7 +26,10 @@ export function SessionCard({ session, role, onReschedule, onComplete }) {
       try {
         const data = await api.getSessionNotes(session.id);
         setNotes(data);
-      } catch { setNotes([]); }
+      } catch (err) {
+        if (process.env.NODE_ENV === 'development') console.error('Failed to load notes:', err);
+        setNotes([]);
+      }
       setLoadingNotes(false);
     }
     setShowNotes(!showNotes);
@@ -153,7 +156,7 @@ export function ScheduleModal({ open, onClose, coachId, coachName, coachAvatar, 
           const today = new Date().toISOString().split('T')[0];
           setSlots(s.filter(slot => slot.date >= today));
         })
-        .catch(() => setSlots([]))
+        .catch((err) => { if (process.env.NODE_ENV === 'development') console.error('Availability fetch failed:', err); setSlots([]); })
         .finally(() => setFetching(false));
     }
   }, [open, coachId]);
@@ -166,8 +169,8 @@ export function ScheduleModal({ open, onClose, coachId, coachName, coachAvatar, 
     try {
       await onConfirm({ date: selectedDate, time: selectedTime, day: dateSlot?.day || selectedDate });
       onClose();
-    } catch (e) {
-      // Error handled in parent
+    } catch (err) {
+      if (process.env.NODE_ENV === 'development') console.error('Schedule confirm failed:', err);
     } finally {
       setLoading(false);
     }

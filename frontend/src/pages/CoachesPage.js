@@ -101,13 +101,13 @@ export default function CoachesPage() {
               <p className="text-sm font-semibold text-foreground mb-2">What happens next?</p>
               <ul className="space-y-1.5">
                 {[
-                  `${selectedPreferences[0]?.name} will review your request first`,
-                  selectedPreferences.length > 1 ? 'If they decline, your next preference will be notified automatically' : 'You will be notified of their decision',
-                  'Once accepted, you can schedule your first session',
+                  { id: 'step1', text: `${selectedPreferences[0]?.name} will review your request first` },
+                  { id: 'step2', text: selectedPreferences.length > 1 ? 'If they decline, your next preference will be notified automatically' : 'You will be notified of their decision' },
+                  { id: 'step3', text: 'Once accepted, you can schedule your first session' },
                 ].map((item, i) => (
-                  <li key={i} className="flex items-start gap-2 text-xs text-foreground/80">
+                  <li key={item.id} className="flex items-start gap-2 text-xs text-foreground/80">
                     <span className="w-4 h-4 rounded-full bg-accent text-white text-xs flex items-center justify-center flex-shrink-0 mt-0.5">{i+1}</span>
-                    {item}
+                    {item.text}
                   </li>
                 ))}
               </ul>

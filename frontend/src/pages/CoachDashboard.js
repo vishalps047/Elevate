@@ -50,7 +50,7 @@ function AvailabilityCalendar({ user }) {
       const data = await api.getRawAvailability(user.id);
       setAvailability(data);
     } catch (e) {
-      console.error(e);
+      toast.error('Failed to load availability');
     }
   }, [user.id]);
 

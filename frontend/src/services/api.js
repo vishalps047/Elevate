@@ -2,7 +2,12 @@ const API_URL = process.env.REACT_APP_BACKEND_URL;
 
 class ApiService {
   constructor() {
-    this.token = localStorage.getItem('elevate_token');
+    this.token = this._sanitize(localStorage.getItem('elevate_token'));
+  }
+
+  _sanitize(value) {
+    if (!value || typeof value !== 'string') return null;
+    return value.replace(/[<>"']/g, '');
   }
 
   setToken(token) {

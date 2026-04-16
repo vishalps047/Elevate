@@ -10,11 +10,11 @@ BASE_URL = os.environ.get('REACT_APP_BACKEND_URL', '').rstrip('/')
 
 # Test credentials
 COACHEE_EMAIL = "sarah@elevate.com"
-COACHEE_PASSWORD = "password123"
+COACHEE_PASSWORD = os.environ.get("TEST_PASSWORD", "password123")
 COACH_EMAIL = "fatema@elevate.com"
-COACH_PASSWORD = "password123"
+COACH_PASSWORD = os.environ.get("TEST_PASSWORD", "password123")
 ALEX_EMAIL = "alex@elevate.com"
-ALEX_PASSWORD = "password123"
+ALEX_PASSWORD = os.environ.get("TEST_PASSWORD", "password123")
 
 
 @pytest.fixture(scope="module")
