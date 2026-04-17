@@ -3,6 +3,12 @@ from database import db
 from models import CreateRequestBody, FeedbackBody, UpdateTotalSessions
 from routes.auth import get_current_user
 from helpers import create_notification
+from email_templates import (
+    send_preferences_received, send_coach_availability_request,
+    send_coach_guidelines, send_introduction_to_coachee,
+    send_feedback_request, send_admin_coach_confirmed,
+    send_admin_journey_completed,
+)
 import uuid
 from datetime import datetime, timezone
 
@@ -87,6 +93,19 @@ async def create_request(body: CreateRequestBody, user: dict = Depends(get_curre
         f"{user['name']} ({user.get('job_title', '')}) has sent you a coaching request for {body.mentorship_area}.",
         user.get("avatar"),
     )
+
+    # Email T7: Preferences received (to coachee)
+    await send_preferences_received(user["id"], user["email"], user["name"])
+
+    # Email T8/T9: Availability request (to first coach)
+    coach_doc = await db.users.find_one({"id": first_coach["coach_id"]}, {"_id": 0})
+    if coach_doc:
+        profile = request_doc.get("coachee_profile", {})
+        await send_coach_availability_request(
+            coach_doc["id"], coach_doc["email"], coach_doc["name"],
+            user["name"], user["email"], profile,
+            enrolment_type=user.get("enrolment_type", "Self-nomination"),
+        )
 
     return request_doc
 
@@ -175,6 +194,20 @@ async def accept_request(request_id: str, user: dict = Depends(get_current_user)
         user.get("avatar"),
     )
 
+    # Email T11: Guidelines for coach
+    await send_coach_guidelines(user["id"], user["email"], user["name"])
+
+    # Email T12/T13: Introduction mail to coachee (gender-aware)
+    coachee_doc = await db.users.find_one({"id": request["coachee_id"]}, {"_id": 0})
+    if coachee_doc:
+        await send_introduction_to_coachee(
+            coachee_doc["id"], coachee_doc["email"], coachee_doc["name"],
+            user["name"], user["email"], user.get("title", "Executive Coach"),
+        )
+
+    # Email: Notify admin
+    await send_admin_coach_confirmed(user["name"], request["coachee_name"])
+
     return {"message": "Request accepted"}
 
 
@@ -229,6 +262,19 @@ async def decline_request(request_id: str, user: dict = Depends(get_current_user
             f"{user['name']} has declined your request. It has been forwarded to {next_coach['coach_name']}.",
             next_coach.get("coach_avatar"),
         )
+
+        # Email T8/T9: Availability request to next coach
+        next_coach_doc = await db.users.find_one({"id": next_coach["coach_id"]}, {"_id": 0})
+        if next_coach_doc:
+            coachee_doc = await db.users.find_one({"id": request["coachee_id"]}, {"_id": 0})
+            profile = request.get("coachee_profile", {})
+            coachee_email = coachee_doc["email"] if coachee_doc else ""
+            enrolment = profile.get("enrolment_type", "Self-nomination")
+            await send_coach_availability_request(
+                next_coach_doc["id"], next_coach_doc["email"], next_coach_doc["name"],
+                request["coachee_name"], coachee_email, profile,
+                enrolment_type=enrolment,
+            )
 
         return {"message": "Declined, forwarded to next preference"}
     else:
@@ -289,6 +335,15 @@ async def complete_journey(request_id: str, user: dict = Depends(get_current_use
             f"{user['name']} has completed their coaching journey with you.",
             user.get("avatar"),
         )
+
+        # Email T16: Feedback request to coachee
+        await send_feedback_request(user["id"], user["email"], user["name"])
+
+        # Email: Notify admin
+        coach_doc = await db.users.find_one({"id": request["active_coach_id"]}, {"_id": 0})
+        coach_name = coach_doc["name"] if coach_doc else "Coach"
+        sessions_count = await db.sessions.count_documents({"request_id": request_id, "status": "completed"})
+        await send_admin_journey_completed(coach_name, user["name"], sessions_count)
 
     return {"message": "Journey completed. Please submit your feedback."}
 

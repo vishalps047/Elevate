@@ -5,6 +5,11 @@ from pydantic import BaseModel
 from typing import Optional, List
 from datetime import datetime, timezone
 import uuid
+from email_templates import (
+    send_registration_confirmed, send_nominated_for_elevate,
+    send_registration_rejected, send_nomination_rejected_to_nominator,
+    send_admin_registration_alert,
+)
 
 router = APIRouter(prefix="/registrations", tags=["registrations"])
 
@@ -63,6 +68,9 @@ async def submit_registration(body: RegistrationRequest):
         "created_at": datetime.now(timezone.utc).isoformat(),
     }
     await db.registrations.insert_one(registration)
+
+    # Email: Notify admin of new registration
+    await send_admin_registration_alert(registration)
 
     # If coach nominated coachees, create separate registration entries for them
     for nominee in (body.nominated_coachees or []):
@@ -155,6 +163,15 @@ async def approve_registration(reg_id: str, user: dict = Depends(get_current_use
         {"$set": {"status": "approved", "approved_at": datetime.now(timezone.utc).isoformat(), "approved_by": user["id"]}},
     )
 
+    # Email: Send appropriate template based on role and enrolment type
+    if reg["role"] == "coachee":
+        enrolment = reg.get("enrolment_type", "Self-nomination")
+        if enrolment == "Self-nomination":
+            await send_registration_confirmed(new_user["id"], new_user["email"], new_user["name"])
+        else:
+            nominator = reg.get("nominated_by", "your Co-SuperCoach")
+            await send_nominated_for_elevate(new_user["id"], new_user["email"], new_user["name"], nominator)
+
     return {"message": f"{reg['name']} has been approved as {reg['role']}. Default password: password123"}
 
 
@@ -173,5 +190,24 @@ async def reject_registration(reg_id: str, user: dict = Depends(get_current_user
         {"id": reg_id},
         {"$set": {"status": "rejected", "rejected_at": datetime.now(timezone.utc).isoformat(), "rejected_by": user["id"]}},
     )
+
+    # Email: Send rejection notification
+    enrolment = reg.get("enrolment_type", "Self-nomination")
+    if enrolment == "Self-nomination":
+        # T3: Rejection to the coachee themselves
+        # Find the user if they exist, or send to reg email
+        user_doc = await db.users.find_one({"email": reg["email"]}, {"_id": 0})
+        if user_doc:
+            await send_registration_rejected(user_doc["id"], user_doc["email"], user_doc["name"])
+    else:
+        # T4: Rejection to the nominator
+        nominator_email = reg.get("nominated_by_email")
+        if nominator_email:
+            nominator_doc = await db.users.find_one({"email": nominator_email}, {"_id": 0})
+            if nominator_doc:
+                await send_nomination_rejected_to_nominator(
+                    nominator_doc["id"], nominator_doc["email"],
+                    nominator_doc["name"], reg["name"]
+                )
 
     return {"message": f"{reg['name']}'s registration has been rejected"}
