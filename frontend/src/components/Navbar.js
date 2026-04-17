@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { Bell, Search, LogOut, User, Menu, X } from 'lucide-react';
+import { Bell, Mail, Search, LogOut, User, Menu, X } from 'lucide-react';
 import { Button } from '../components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '../components/ui/avatar';
 import {
@@ -7,6 +7,7 @@ import {
   DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger
 } from '../components/ui/dropdown-menu';
 import NotificationPanel from './NotificationPanel';
+import EmailPanel from './EmailPanel';
 import ProfileEditModal from './ProfileEditModal';
 import { useApp } from '../context/AppContext';
 import { useNavigate, useLocation } from 'react-router-dom';
@@ -28,12 +29,14 @@ const roleNavLinks = {
 };
 
 export default function Navbar() {
-  const { user, logout, unreadCount } = useApp();
+  const { user, logout, unreadCount, emails, unreadEmailCount, markEmailRead, markAllEmailsRead } = useApp();
   const [showNotif, setShowNotif] = useState(false);
+  const [showEmail, setShowEmail] = useState(false);
   const [showSearch, setShowSearch] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
   const notifRef = useRef(null);
+  const emailRef = useRef(null);
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -43,6 +46,9 @@ export default function Navbar() {
     const handleClickOutside = (e) => {
       if (notifRef.current && !notifRef.current.contains(e.target)) {
         setShowNotif(false);
+      }
+      if (emailRef.current && !emailRef.current.contains(e.target)) {
+        setShowEmail(false);
       }
     };
     document.addEventListener('mousedown', handleClickOutside);
@@ -106,10 +112,35 @@ export default function Navbar() {
               <Search className="w-4 h-4 text-white" />
             </button>
 
+            {/* Emails */}
+            <div className="relative" ref={emailRef}>
+              <button
+                onClick={() => { setShowEmail(!showEmail); setShowNotif(false); }}
+                className="relative w-9 h-9 rounded-full bg-white/15 hover:bg-white/25 flex items-center justify-center transition-smooth"
+                data-testid="email-icon"
+              >
+                <Mail className="w-4 h-4 text-white" />
+                {unreadEmailCount > 0 && (
+                  <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] rounded-full bg-destructive text-white text-[10px] font-bold flex items-center justify-center px-1" data-testid="email-count">
+                    {unreadEmailCount > 9 ? '9+' : unreadEmailCount}
+                  </span>
+                )}
+              </button>
+              {showEmail && (
+                <EmailPanel
+                  emails={emails}
+                  unreadCount={unreadEmailCount}
+                  onMarkRead={markEmailRead}
+                  onMarkAllRead={markAllEmailsRead}
+                  onClose={() => setShowEmail(false)}
+                />
+              )}
+            </div>
+
             {/* Notifications */}
             <div className="relative" ref={notifRef}>
               <button
-                onClick={() => setShowNotif(!showNotif)}
+                onClick={() => { setShowNotif(!showNotif); setShowEmail(false); }}
                 className="relative w-9 h-9 rounded-full bg-accent/80 hover:bg-accent flex items-center justify-center transition-smooth"
                 data-testid="notification-bell"
               >

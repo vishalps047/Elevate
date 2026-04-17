@@ -117,6 +117,11 @@ class ApiService {
   getNotifications() { return this.request('/api/notifications'); }
   markRead(id) { return this.request(`/api/notifications/${id}/read`, { method: 'PUT' }); }
   markAllRead() { return this.request('/api/notifications/read-all', { method: 'PUT' }); }
+
+  // Emails
+  getEmails() { return this.request('/api/emails'); }
+  markEmailRead(id) { return this.request(`/api/emails/${id}/read`, { method: 'PUT' }); }
+  markAllEmailsRead() { return this.request('/api/emails/read-all', { method: 'PUT' }); }
 }
 
 export const api = new ApiService();

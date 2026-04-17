@@ -22,6 +22,7 @@ from routes.sessions import router as sessions_router
 from routes.notifications import router as notifications_router
 from routes.admin import router as admin_router
 from routes.registrations import router as registrations_router
+from routes.emails import router as emails_router
 from seed import seed_database
 from database import client
 from helpers import deliver_due_reminders, auto_complete_past_sessions
@@ -62,6 +63,7 @@ app.include_router(sessions_router, prefix="/api")
 app.include_router(notifications_router, prefix="/api")
 app.include_router(admin_router, prefix="/api")
 app.include_router(registrations_router, prefix="/api")
+app.include_router(emails_router, prefix="/api")
 
 app.mount("/api/uploads", StaticFiles(directory=str(UPLOAD_DIR)), name="uploads")
 

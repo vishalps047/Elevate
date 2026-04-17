@@ -8,6 +8,7 @@ export const AppProvider = ({ children }) => {
   const [token, setToken] = useState(localStorage.getItem('elevate_token'));
   const [loading, setLoading] = useState(true);
   const [notifications, setNotifications] = useState([]);
+  const [emails, setEmails] = useState([]);
 
   useEffect(() => {
     if (token) {
@@ -29,18 +30,28 @@ export const AppProvider = ({ children }) => {
     try {
       const notifs = await api.getNotifications();
       setNotifications(notifs);
-    } catch (err) {
-      if (process.env.NODE_ENV === 'development') console.error('Notification fetch failed:', err);
-    }
+    } catch (_) { /* ignore */ }
+  }, [token]);
+
+  const fetchEmails = useCallback(async () => {
+    if (!token) return;
+    try {
+      const data = await api.getEmails();
+      setEmails(data);
+    } catch (_) { /* ignore */ }
   }, [token]);
 
   useEffect(() => {
     if (token && user) {
       fetchNotifications();
-      const interval = setInterval(fetchNotifications, 15000);
+      fetchEmails();
+      const interval = setInterval(() => {
+        fetchNotifications();
+        fetchEmails();
+      }, 30000);
       return () => clearInterval(interval);
     }
-  }, [token, user, fetchNotifications]);
+  }, [token, user, fetchNotifications, fetchEmails]);
 
   const login = async (email, password) => {
     const result = await api.login(email, password);
@@ -62,27 +73,39 @@ export const AppProvider = ({ children }) => {
     setToken(null);
     setUser(null);
     setNotifications([]);
+    setEmails([]);
     localStorage.removeItem('elevate_token');
   };
 
   const unreadCount = notifications.filter(n => !n.read).length;
+  const unreadEmailCount = emails.filter(e => !e.read).length;
 
   const markAllRead = async () => {
     try {
       await api.markAllRead();
       setNotifications(prev => prev.map(n => ({ ...n, read: true })));
-    } catch (err) {
-      if (process.env.NODE_ENV === 'development') console.error('Mark all read failed:', err);
-    }
+    } catch (_) { /* ignore */ }
   };
 
   const markRead = async (id) => {
     try {
       await api.markRead(id);
       setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
-    } catch (err) {
-      if (process.env.NODE_ENV === 'development') console.error('Mark read failed:', err);
-    }
+    } catch (_) { /* ignore */ }
+  };
+
+  const markEmailRead = async (id) => {
+    try {
+      await api.markEmailRead(id);
+      setEmails(prev => prev.map(e => e.id === id ? { ...e, read: true } : e));
+    } catch (_) { /* ignore */ }
+  };
+
+  const markAllEmailsRead = async () => {
+    try {
+      await api.markAllEmailsRead();
+      setEmails(prev => prev.map(e => ({ ...e, read: true })));
+    } catch (_) { /* ignore */ }
   };
 
   return (
@@ -98,6 +121,11 @@ export const AppProvider = ({ children }) => {
       markAllRead,
       markRead,
       fetchNotifications,
+      emails,
+      unreadEmailCount,
+      markEmailRead,
+      markAllEmailsRead,
+      fetchEmails,
     }}>
       {children}
     </AppContext.Provider>

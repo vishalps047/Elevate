@@ -20,9 +20,9 @@ export default function LoginPage() {
   const [demoLoading, setDemoLoading] = useState('');
 
   const demoAccounts = [
-    { label: 'Coach', email: 'fatema@elevate.com', password: 'password123', icon: Award },
-    { label: 'Coachee', email: 'sarah@elevate.com', password: 'password123', icon: Users },
-    { label: 'Admin', email: 'admin@elevate.com', password: 'password123', icon: Shield },
+    { label: 'Coach', email: 'fatema.hunaid@in.gt.com', password: 'password123', icon: Award },
+    { label: 'Coachee', email: 'sarah.johnson@in.gt.com', password: 'password123', icon: Users },
+    { label: 'Admin', email: 'admin@in.gt.com', password: 'password123', icon: Shield },
   ];
 
   const handleDemoLogin = async (account) => {

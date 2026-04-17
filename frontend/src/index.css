@@ -1,3 +1,11 @@
+/* Email body styles */
+.email-body p { margin: 0 0 6px 0; }
+.email-body a { color: hsl(271 65% 45%); text-decoration: underline; }
+.email-body table { font-size: 13px; }
+.email-body strong { font-weight: 600; }
+.email-body em { font-style: italic; color: hsl(0 0% 45%); font-size: 12px; }
+
+
 @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap');
 
 @tailwind base;
