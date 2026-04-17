@@ -63,6 +63,8 @@ Role-based digital coaching platform for Grant Thornton, connecting employees (C
 22. Admin MIS Reports (coach occupancy, coachee status, location/BU distribution, nomination breakdown)
 23. Demo Login Buttons (one-click Coach/Coachee/Admin login for demos)
 24. Profile Editing (edit profile photo + role-specific fields, Name/Email locked)
+25. Demo Email Inbox (simulated email notifications with 16 Elevate templates, Mail icon in Navbar)
+26. Expanded user base: 6 coaches, 6 coachees, 1 admin (all @in.gt.com domain)
 
 ## Key API Endpoints
 ### Public
@@ -72,6 +74,11 @@ Role-based digital coaching platform for Grant Thornton, connecting employees (C
 - `POST /api/auth/login` | `GET /api/auth/me`
 - `PUT /api/auth/profile` - Update profile fields (role-restricted)
 - `POST /api/auth/avatar` - Upload profile photo (returns URL)
+
+### Emails (Demo Inbox)
+- `GET /api/emails` - Get emails for current user
+- `PUT /api/emails/{id}/read` - Mark email as read
+- `PUT /api/emails/read-all` - Mark all emails as read
 
 ### Registrations (no auth for POST, admin for GET/PUT)
 - `POST /api/registrations` - Submit registration
