@@ -18,18 +18,31 @@ export default function LoginPage() {
   const [showRegistration, setShowRegistration] = useState(false);
   const [publicStats, setPublicStats] = useState(null);
   const [demoLoading, setDemoLoading] = useState('');
+  const [demoPicker, setDemoPicker] = useState(null); // 'coach' | 'coachee' | null
 
-  const demoAccounts = [
-    { label: 'Coach', email: 'fatema.hunaid@in.gt.com', password: 'password123', icon: Award },
-    { label: 'Coachee', email: 'sarah.johnson@in.gt.com', password: 'password123', icon: Users },
-    { label: 'Admin', email: 'admin@in.gt.com', password: 'password123', icon: Shield },
+  const demoCoaches = [
+    { name: 'Fatema Hunaid', email: 'fatema.hunaid@in.gt.com', location: 'New Delhi', avatar: 'https://randomuser.me/api/portraits/women/44.jpg' },
+    { name: 'Vaishali Mane', email: 'vaishali.mane@in.gt.com', location: 'Mumbai', avatar: 'https://randomuser.me/api/portraits/women/68.jpg' },
+    { name: 'Gaurav Jain', email: 'gaurav.jain@in.gt.com', location: 'Bangalore', avatar: 'https://randomuser.me/api/portraits/men/32.jpg' },
+    { name: 'Ajay Gurung', email: 'ajay.gurung@in.gt.com', location: 'Pune', avatar: 'https://randomuser.me/api/portraits/men/55.jpg' },
+    { name: 'Amina Khan', email: 'amina.khan@in.gt.com', location: 'Hyderabad', avatar: 'https://randomuser.me/api/portraits/women/33.jpg' },
+    { name: 'Rajesh Kumar', email: 'rajesh.kumar@in.gt.com', location: 'Chennai', avatar: 'https://randomuser.me/api/portraits/men/78.jpg' },
   ];
 
-  const handleDemoLogin = async (account) => {
+  const demoCoachees = [
+    { name: 'Sarah Johnson', email: 'sarah.johnson@in.gt.com', detail: 'T2 · MUM · Audit', avatar: 'https://randomuser.me/api/portraits/women/10.jpg' },
+    { name: 'Alex Morgan', email: 'alex.morgan@in.gt.com', detail: 'T2 · DEL · Advisory', avatar: 'https://randomuser.me/api/portraits/men/23.jpg' },
+    { name: 'Priya Sharma', email: 'priya.sharma@in.gt.com', detail: 'T1 · BLR · Tax', avatar: 'https://randomuser.me/api/portraits/women/45.jpg' },
+    { name: 'Rohan Mehta', email: 'rohan.mehta@in.gt.com', detail: 'T1 · DEL · Advisory', avatar: 'https://randomuser.me/api/portraits/men/46.jpg' },
+    { name: 'Ananya Reddy', email: 'ananya.reddy@in.gt.com', detail: 'T2 · HYD · Assurance', avatar: 'https://randomuser.me/api/portraits/women/52.jpg' },
+    { name: 'Vikram Singh', email: 'vikram.singh@in.gt.com', detail: 'T2 · CHN · Consulting', avatar: 'https://randomuser.me/api/portraits/men/62.jpg' },
+  ];
+
+  const handleDemoLogin = async (email) => {
     setError('');
-    setDemoLoading(account.label);
+    setDemoLoading(email);
     try {
-      await login(account.email, account.password);
+      await login(email, 'password123');
       navigate('/');
     } catch (err) {
       setError(err.message || 'Demo login failed');
@@ -197,28 +210,65 @@ export default function LoginPage() {
               {/* Demo Quick Login */}
               <div className="mt-4 pt-4 border-t border-dashed border-border">
                 <p className="text-xs text-muted-foreground text-center mb-3">Demo Access</p>
-                <div className="grid grid-cols-3 gap-2">
-                  {demoAccounts.map((account) => (
+
+                {!demoPicker ? (
+                  <div className="grid grid-cols-3 gap-2">
                     <Button
-                      key={account.label}
-                      variant="ghost"
-                      size="sm"
-                      className="h-9 text-xs font-medium gap-1.5 border border-border/50 hover:border-primary/40 hover:bg-primary/5 transition-colors"
-                      onClick={() => handleDemoLogin(account)}
-                      disabled={!!demoLoading}
-                      data-testid={`demo-login-${account.label.toLowerCase()}`}
+                      variant="ghost" size="sm"
+                      className="h-9 text-xs font-medium gap-1.5 border border-border/50 hover:border-primary/40 hover:bg-primary/5"
+                      onClick={() => setDemoPicker('coach')}
+                      data-testid="demo-login-coach"
                     >
-                      {demoLoading === account.label ? (
-                        <span className="animate-pulse">...</span>
-                      ) : (
-                        <>
-                          <account.icon className="w-3 h-3" />
-                          {account.label}
-                        </>
-                      )}
+                      <Award className="w-3 h-3" /> Coach
                     </Button>
-                  ))}
-                </div>
+                    <Button
+                      variant="ghost" size="sm"
+                      className="h-9 text-xs font-medium gap-1.5 border border-border/50 hover:border-primary/40 hover:bg-primary/5"
+                      onClick={() => setDemoPicker('coachee')}
+                      data-testid="demo-login-coachee"
+                    >
+                      <Users className="w-3 h-3" /> Coachee
+                    </Button>
+                    <Button
+                      variant="ghost" size="sm"
+                      className="h-9 text-xs font-medium gap-1.5 border border-border/50 hover:border-primary/40 hover:bg-primary/5"
+                      onClick={() => handleDemoLogin('admin@in.gt.com')}
+                      disabled={!!demoLoading}
+                      data-testid="demo-login-admin"
+                    >
+                      {demoLoading === 'admin@in.gt.com' ? <span className="animate-pulse">...</span> : <><Shield className="w-3 h-3" /> Admin</>}
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="animate-fade-in">
+                    <div className="flex items-center justify-between mb-2">
+                      <p className="text-xs font-semibold text-foreground capitalize">Select {demoPicker}</p>
+                      <button onClick={() => setDemoPicker(null)} className="text-xs text-muted-foreground hover:text-foreground">&larr; Back</button>
+                    </div>
+                    <div className="space-y-1.5 max-h-[200px] overflow-y-auto">
+                      {(demoPicker === 'coach' ? demoCoaches : demoCoachees).map((person) => (
+                        <button
+                          key={person.email}
+                          onClick={() => handleDemoLogin(person.email)}
+                          disabled={!!demoLoading}
+                          className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg border border-border/50 hover:border-primary/40 hover:bg-primary/5 transition-colors text-left"
+                          data-testid={`demo-pick-${person.email.split('@')[0]}`}
+                        >
+                          {demoLoading === person.email ? (
+                            <div className="w-8 h-8 rounded-full bg-muted animate-pulse" />
+                          ) : (
+                            <img src={person.avatar} alt="" className="w-8 h-8 rounded-full object-cover" />
+                          )}
+                          <div className="flex-1 min-w-0">
+                            <p className="text-xs font-semibold text-foreground truncate">{person.name}</p>
+                            <p className="text-[10px] text-muted-foreground truncate">{person.detail || person.location}</p>
+                          </div>
+                          <ChevronRight className="w-3 h-3 text-muted-foreground flex-shrink-0" />
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             </CardContent>
           </Card>
