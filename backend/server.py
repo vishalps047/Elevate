@@ -26,6 +26,14 @@ from routes.emails import router as emails_router
 from seed import seed_database
 from database import client
 from helpers import deliver_due_reminders, auto_complete_past_sessions
+from security import (
+    SecurityHeadersMiddleware,
+    RateLimitMiddleware,
+    RequestSizeLimitMiddleware,
+    AuditLogMiddleware,
+    global_exception_handler,
+    validation_exception_handler,
+)
 
 logging.basicConfig(
     level=logging.INFO,
@@ -54,8 +62,14 @@ async def lifespan(app):
     client.close()
 
 
-app = FastAPI(lifespan=lifespan)
+app = FastAPI(
+    lifespan=lifespan,
+    docs_url=None,      # Disable Swagger UI in production
+    redoc_url=None,      # Disable ReDoc in production
+    openapi_url=None,    # Disable OpenAPI schema endpoint
+)
 
+# ── ROUTE REGISTRATION ──
 app.include_router(auth_router, prefix="/api")
 app.include_router(coaches_router, prefix="/api")
 app.include_router(requests_router, prefix="/api")
@@ -67,18 +81,41 @@ app.include_router(emails_router, prefix="/api")
 
 app.mount("/api/uploads", StaticFiles(directory=str(UPLOAD_DIR)), name="uploads")
 
+# ── MIDDLEWARE STACK (order matters: last added = first executed) ──
+# CORS must be outermost
+cors_origins = os.environ.get('CORS_ORIGINS', '').strip()
+if not cors_origins or cors_origins == '*':
+    # In production, restrict to your domain. Fallback for dev.
+    allowed_origins = ["*"]
+else:
+    allowed_origins = [o.strip() for o in cors_origins.split(',') if o.strip()]
+
 app.add_middleware(
     CORSMiddleware,
     allow_credentials=True,
-    allow_origins=os.environ.get('CORS_ORIGINS', '*').split(','),
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_origins=allowed_origins,
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allow_headers=["Authorization", "Content-Type"],
+    expose_headers=["X-Request-ID"],
 )
+
+# Security middleware chain
+app.add_middleware(SecurityHeadersMiddleware)
+app.add_middleware(RateLimitMiddleware)
+app.add_middleware(RequestSizeLimitMiddleware)
+app.add_middleware(AuditLogMiddleware)
+
+# Global exception handler — no stack traces leaked
+app.add_exception_handler(Exception, global_exception_handler)
+
+# Validation error handler — no schema leaks
+from fastapi.exceptions import RequestValidationError
+app.add_exception_handler(RequestValidationError, validation_exception_handler)
 
 
 @app.get("/api")
 async def root():
-    return {"message": "ELEVATE API v1.0"}
+    return {"status": "ok"}
 
 
 @app.get("/api/public/stats")

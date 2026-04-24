@@ -1,10 +1,12 @@
 from fastapi import APIRouter, HTTPException, Depends
 from database import db
 from routes.auth import get_current_user, hash_password
+from security import sanitize_string, check_nosql_injection
 from pydantic import BaseModel
 from typing import Optional, List
 from datetime import datetime, timezone
 import uuid
+import re
 from email_templates import (
     send_registration_confirmed, send_nominated_for_elevate,
     send_registration_rejected, send_nomination_rejected_to_nominator,
@@ -37,8 +39,22 @@ class RegistrationRequest(BaseModel):
 
 @router.post("")
 async def submit_registration(body: RegistrationRequest):
+    # Validate email format
+    email = body.email.strip().lower()
+    if not re.match(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$', email):
+        raise HTTPException(status_code=400, detail="Invalid email format")
+
+    # Sanitize all text inputs
+    name = sanitize_string(body.name, 100)
+    if not name or len(name) < 2:
+        raise HTTPException(status_code=400, detail="Name is required (min 2 characters)")
+
+    # Check for NoSQL injection in inputs
+    if check_nosql_injection(body.dict()):
+        raise HTTPException(status_code=400, detail="Invalid input detected")
+
     # Check if email already registered
-    existing_user = await db.users.find_one({"email": body.email.lower()})
+    existing_user = await db.users.find_one({"email": email})
     if existing_user:
         raise HTTPException(status_code=400, detail="This email is already registered on the platform")
 

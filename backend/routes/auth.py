@@ -1,10 +1,12 @@
 from fastapi import APIRouter, HTTPException, Header, Depends, UploadFile, File
 from database import db
 from models import LoginRequest, ProfileUpdateBody
+from security import sanitize_string, validate_image_upload
 import jwt
 import os
 import bcrypt
 import uuid
+import re
 from datetime import datetime, timezone, timedelta
 from pathlib import Path
 
@@ -13,7 +15,10 @@ router = APIRouter(prefix="/auth", tags=["auth"])
 JWT_SECRET = os.environ.get("JWT_SECRET")
 if not JWT_SECRET:
     raise RuntimeError("JWT_SECRET environment variable is required")
+if len(JWT_SECRET) < 32:
+    raise RuntimeError("JWT_SECRET must be at least 32 characters")
 JWT_ALGORITHM = "HS256"
+JWT_EXPIRY_HOURS = 8  # Shorter expiry for VAPT compliance
 
 
 def hash_password(password):
@@ -44,7 +49,12 @@ async def get_current_user(authorization: str = Header(None)):
 
 @router.post("/login")
 async def login(body: LoginRequest):
-    user = await db.users.find_one({"email": body.email}, {"_id": 0})
+    # Sanitize email input
+    email = body.email.strip()
+    if not re.match(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$', email):
+        raise HTTPException(status_code=401, detail="Invalid email or password")
+
+    user = await db.users.find_one({"email": email}, {"_id": 0})
     if not user or not verify_password(body.password, user.get("password_hash", "")):
         raise HTTPException(status_code=401, detail="Invalid email or password")
 
@@ -52,13 +62,14 @@ async def login(body: LoginRequest):
         {
             "user_id": user["id"],
             "role": user["role"],
-            "exp": datetime.now(timezone.utc) + timedelta(days=7),
+            "iat": datetime.now(timezone.utc),
+            "exp": datetime.now(timezone.utc) + timedelta(hours=JWT_EXPIRY_HOURS),
         },
         JWT_SECRET,
         algorithm=JWT_ALGORITHM,
     )
 
-    user_data = {k: v for k, v in user.items() if k != "password_hash"}
+    user_data = {k: v for k, v in user.items() if k not in ("password_hash", "_id")}
     return {"token": token, "user": user_data}
 
 
@@ -83,7 +94,13 @@ async def update_profile(body: ProfileUpdateBody, user: dict = Depends(get_curre
     updates = {}
     for field, value in body.dict(exclude_none=True).items():
         if field in allowed:
-            updates[field] = value
+            # Sanitize string inputs
+            if isinstance(value, str):
+                updates[field] = sanitize_string(value, max_length=1000)
+            elif isinstance(value, list):
+                updates[field] = [sanitize_string(v, 200) if isinstance(v, str) else v for v in value]
+            else:
+                updates[field] = value
 
     if not updates:
         raise HTTPException(status_code=400, detail="No valid fields to update")
@@ -110,21 +127,17 @@ async def update_profile(body: ProfileUpdateBody, user: dict = Depends(get_curre
 
 @router.post("/avatar")
 async def upload_avatar(file: UploadFile = File(...), user: dict = Depends(get_current_user)):
-    if not file.content_type or not file.content_type.startswith("image/"):
-        raise HTTPException(status_code=400, detail="Only image files are allowed")
-
-    ext = file.filename.split(".")[-1] if "." in file.filename else "jpg"
-    filename = f"{user['id']}_{uuid.uuid4().hex[:8]}.{ext}"
-    filepath = UPLOAD_DIR / filename
-
     contents = await file.read()
-    if len(contents) > 5 * 1024 * 1024:
-        raise HTTPException(status_code=400, detail="File too large (max 5MB)")
+    ext = validate_image_upload(contents, file.filename or "upload.jpg", file.content_type or "")
+
+    # Generate safe filename (no user-controlled path components)
+    safe_name = f"{uuid.uuid4().hex}.{ext}"
+    filepath = UPLOAD_DIR / safe_name
 
     with open(filepath, "wb") as f:
         f.write(contents)
 
-    avatar_url = f"/api/uploads/{filename}"
+    avatar_url = f"/api/uploads/{safe_name}"
     await db.users.update_one({"id": user["id"]}, {"$set": {"avatar": avatar_url}})
 
     return {"avatar": avatar_url}
