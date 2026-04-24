@@ -21,21 +21,29 @@ export default function LoginPage() {
   const [demoPicker, setDemoPicker] = useState(null); // 'coach' | 'coachee' | null
 
   const demoCoaches = [
-    { name: 'Fatema Hunaid', email: 'fatema.hunaid@in.gt.com', location: 'New Delhi', avatar: 'https://randomuser.me/api/portraits/women/44.jpg' },
-    { name: 'Vaishali Mane', email: 'vaishali.mane@in.gt.com', location: 'Mumbai', avatar: 'https://randomuser.me/api/portraits/women/68.jpg' },
-    { name: 'Gaurav Jain', email: 'gaurav.jain@in.gt.com', location: 'Bangalore', avatar: 'https://randomuser.me/api/portraits/men/32.jpg' },
-    { name: 'Ajay Gurung', email: 'ajay.gurung@in.gt.com', location: 'Pune', avatar: 'https://randomuser.me/api/portraits/men/55.jpg' },
-    { name: 'Amina Khan', email: 'amina.khan@in.gt.com', location: 'Hyderabad', avatar: 'https://randomuser.me/api/portraits/women/33.jpg' },
-    { name: 'Rajesh Kumar', email: 'rajesh.kumar@in.gt.com', location: 'Chennai', avatar: 'https://randomuser.me/api/portraits/men/78.jpg' },
+    { name: 'Fatema Hunaid', email: 'Fatema.Hunaid@in.gt.com', location: 'GUR · People & Culture' },
+    { name: 'Triven Gupta', email: 'Triven.Gupta@in.gt.com', location: 'GUR · Global Delivery' },
+    { name: 'Archie Mehtani', email: 'Archie.Mehtani@in.gt.com', location: 'DEL · FS Consulting' },
+    { name: 'Anup Thomas', email: 'Anup.Thomas@in.gt.com', location: 'BAN · ESG & Risk' },
+    { name: 'Sumaiya Shaikh', email: 'Sumaiya.Shaikh@in.gt.com', location: 'MUM · Audit' },
+    { name: 'Amit Kumar', email: 'Amit.K@in.gt.com', location: 'HYD · Tax & Regulatory' },
+    { name: 'Kapil Arora', email: 'Kapil.Arora@in.gt.com', location: 'BAN · ESG & Risk' },
+    { name: 'Gaurav Sahdev', email: 'Gaurav.Sahdev@in.gt.com', location: 'HYD · Private Client' },
+    { name: 'Pankaj Arora', email: 'Pankaj.Arora@in.gt.com', location: 'CHN · Tax & Regulatory' },
+    { name: 'Armaity Jayakar', email: 'Armaity.Jayakar@in.gt.com', location: 'MUM · Audit' },
   ];
 
   const demoCoachees = [
-    { name: 'Sarah Johnson', email: 'sarah.johnson@in.gt.com', detail: 'T2 · MUM · Audit', avatar: 'https://randomuser.me/api/portraits/women/10.jpg' },
-    { name: 'Alex Morgan', email: 'alex.morgan@in.gt.com', detail: 'T2 · DEL · Advisory', avatar: 'https://randomuser.me/api/portraits/men/23.jpg' },
-    { name: 'Priya Sharma', email: 'priya.sharma@in.gt.com', detail: 'T1 · BLR · Tax', avatar: 'https://randomuser.me/api/portraits/women/45.jpg' },
-    { name: 'Rohan Mehta', email: 'rohan.mehta@in.gt.com', detail: 'T1 · DEL · Advisory', avatar: 'https://randomuser.me/api/portraits/men/46.jpg' },
-    { name: 'Ananya Reddy', email: 'ananya.reddy@in.gt.com', detail: 'T2 · HYD · Assurance', avatar: 'https://randomuser.me/api/portraits/women/52.jpg' },
-    { name: 'Vikram Singh', email: 'vikram.singh@in.gt.com', detail: 'T2 · CHN · Consulting', avatar: 'https://randomuser.me/api/portraits/men/62.jpg' },
+    { name: 'Prerna Kapoor', email: 'Prerna.Kapoor@in.gt.com', detail: 'T2 · DEL · Tax & Regulatory' },
+    { name: 'Rahul Lalit', email: 'Rahul.Lalit@in.gt.com', detail: 'T2 · MUM · Assurance' },
+    { name: 'Pragya Sharma', email: 'Pragya.Sharma@in.gt.com', detail: 'T1 · BAN · ESG & Risk' },
+    { name: 'Mohit Khullar', email: 'Mohit.Khullar@in.gt.com', detail: 'T1 · GUR · Advisory' },
+    { name: 'Pooja Raina', email: 'Pooja.Raina@in.gt.com', detail: 'T2 · GUR · Global Delivery' },
+    { name: 'Pratik Hegde', email: 'Pratik.Hegde@in.gt.com', detail: 'T2 · BAN · Transformation' },
+    { name: 'Saurabh Redhu', email: 'Saurabh.Redhu@in.gt.com', detail: 'T2 · DEL · FS Consulting' },
+    { name: 'Kamalika Sen Roy', email: 'Kamalika.Roy@in.gt.com', detail: 'T2 · MUM · Audit' },
+    { name: 'Hazel Ferreira', email: 'Hazel.Ferreira@in.gt.com', detail: 'T2 · MUM · Cyber & IT Risk' },
+    { name: 'Dhaval Sheth', email: 'Dhaval.Sheth@in.gt.com', detail: 'T1 · DEH · BPS' },
   ];
 
   const handleDemoLogin = async (email) => {
@@ -232,11 +240,11 @@ export default function LoginPage() {
                     <Button
                       variant="ghost" size="sm"
                       className="h-9 text-xs font-medium gap-1.5 border border-border/50 hover:border-primary/40 hover:bg-primary/5"
-                      onClick={() => handleDemoLogin('admin@in.gt.com')}
+                      onClick={() => handleDemoLogin('Raeesa.Naim@in.gt.com')}
                       disabled={!!demoLoading}
                       data-testid="demo-login-admin"
                     >
-                      {demoLoading === 'admin@in.gt.com' ? <span className="animate-pulse">...</span> : <><Shield className="w-3 h-3" /> Admin</>}
+                      {demoLoading === 'Raeesa.Naim@in.gt.com' ? <span className="animate-pulse">...</span> : <><Shield className="w-3 h-3" /> Admin</>}
                     </Button>
                   </div>
                 ) : (
@@ -257,7 +265,9 @@ export default function LoginPage() {
                           {demoLoading === person.email ? (
                             <div className="w-8 h-8 rounded-full bg-muted animate-pulse" />
                           ) : (
-                            <img src={person.avatar} alt="" className="w-8 h-8 rounded-full object-cover" />
+                            <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-primary text-xs font-bold">
+                              {person.name.split(' ').map(n => n[0]).join('')}
+                            </div>
                           )}
                           <div className="flex-1 min-w-0">
                             <p className="text-xs font-semibold text-foreground truncate">{person.name}</p>
