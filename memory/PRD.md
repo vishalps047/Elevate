@@ -66,6 +66,7 @@ Role-based digital coaching platform for Grant Thornton, connecting employees (C
 25. Demo Email Inbox (simulated email notifications with 16 Elevate templates, Mail icon in Navbar)
 26. Expanded user base: 6 coaches, 6 coachees, 1 admin (all @in.gt.com domain)
 27. Auto-triggered emails at key events (registration approve/reject, coach request, accept/decline, journey complete) with gender-aware pronouns
+28. Admin MIS Dashboard revamp: 4 sub-tabs (Analytics/Coach Details/Coachee Details/Coach Occupancy), 9 Recharts visualizations, searchable/sortable/paginated tables with CSV export, real-time MongoDB data
 
 ## Key API Endpoints
 ### Public
