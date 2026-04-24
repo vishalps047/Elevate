@@ -1,9 +1,9 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef, useEffect } from 'react';
 import { Card, CardContent } from './ui/card';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Badge } from './ui/badge';
-import { Search, Download, ChevronUp, ChevronDown, ChevronLeft, ChevronRight, Table2, BarChart3, Users, Award, Briefcase } from 'lucide-react';
+import { Search, Download, ChevronUp, ChevronDown, ChevronLeft, ChevronRight, BarChart3, Users, Award, Briefcase, Filter, X, Check } from 'lucide-react';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, Legend
@@ -18,19 +18,19 @@ const PAGE_SIZE = 15;
 const COACH_COLS = [
   { key: 'name', label: 'Name' },
   { key: 'email', label: 'Email' },
-  { key: 'gender', label: 'Gender' },
-  { key: 'tier', label: 'Tier' },
-  { key: 'designation', label: 'Designation' },
-  { key: 'location', label: 'Location' },
-  { key: 'region', label: 'Region' },
-  { key: 'business_unit', label: 'Business Unit' },
-  { key: 'competency', label: 'Competency' },
+  { key: 'gender', label: 'Gender', filterable: true },
+  { key: 'tier', label: 'Tier', filterable: true },
+  { key: 'designation', label: 'Designation', filterable: true },
+  { key: 'location', label: 'Location', filterable: true },
+  { key: 'region', label: 'Region', filterable: true },
+  { key: 'business_unit', label: 'Business Unit', filterable: true },
+  { key: 'competency', label: 'Competency', filterable: true },
   { key: 'total_work_experience', label: 'Experience (Yrs)' },
   { key: 'coaching_expertise', label: 'Coaching Capacity' },
   { key: 'certifications', label: 'Certifications' },
   { key: 'expertise_areas', label: 'Expertise Areas' },
   { key: 'domains', label: 'Domains' },
-  { key: 'employee_status', label: 'Employee Status' },
+  { key: 'employee_status', label: 'Employee Status', filterable: true },
   { key: 'assigned', label: 'Assigned' },
   { key: 'remaining', label: 'Available' },
   { key: 'total_sessions', label: 'Sessions' },
@@ -39,35 +39,35 @@ const COACH_COLS = [
 const COACHEE_COLS = [
   { key: 'name', label: 'Name' },
   { key: 'email', label: 'Email' },
-  { key: 'gender', label: 'Gender' },
-  { key: 'tier', label: 'Tier' },
-  { key: 'designation', label: 'Designation' },
-  { key: 'location', label: 'Location' },
-  { key: 'region', label: 'Region' },
-  { key: 'business_unit', label: 'Business Unit' },
-  { key: 'competency', label: 'Competency' },
+  { key: 'gender', label: 'Gender', filterable: true },
+  { key: 'tier', label: 'Tier', filterable: true },
+  { key: 'designation', label: 'Designation', filterable: true },
+  { key: 'location', label: 'Location', filterable: true },
+  { key: 'region', label: 'Region', filterable: true },
+  { key: 'business_unit', label: 'Business Unit', filterable: true },
+  { key: 'competency', label: 'Competency', filterable: true },
   { key: 'date_of_joining', label: 'Date of Joining' },
-  { key: 'enrolment_type', label: 'Enrolment Type' },
-  { key: 'employee_status', label: 'Employee Status' },
-  { key: 'coaching_status', label: 'Coaching Status' },
-  { key: 'assigned_coach', label: 'Assigned Coach' },
+  { key: 'enrolment_type', label: 'Enrolment Type', filterable: true },
+  { key: 'employee_status', label: 'Employee Status', filterable: true },
+  { key: 'coaching_status', label: 'Coaching Status', filterable: true },
+  { key: 'assigned_coach', label: 'Assigned Coach', filterable: true },
   { key: 'sessions_completed', label: 'Sessions Done' },
-  { key: 'mentorship_area', label: 'Focus Area' },
+  { key: 'mentorship_area', label: 'Focus Area', filterable: true },
 ];
 
 const OCCUPANCY_COLS = [
   { key: 'name', label: 'Coach Name' },
   { key: 'designation', label: 'Designation' },
-  { key: 'location', label: 'Location' },
-  { key: 'region', label: 'Region' },
-  { key: 'gender', label: 'Gender' },
-  { key: 'tier', label: 'Tier' },
+  { key: 'location', label: 'Location', filterable: true },
+  { key: 'region', label: 'Region', filterable: true },
+  { key: 'gender', label: 'Gender', filterable: true },
+  { key: 'tier', label: 'Tier', filterable: true },
   { key: 'capacity', label: 'Capacity' },
   { key: 'assigned', label: 'Assigned' },
   { key: 'remaining', label: 'Available' },
   { key: 'completed_journeys', label: 'Completed' },
   { key: 'total_sessions', label: 'Total Sessions' },
-  { key: 'employee_status', label: 'Status' },
+  { key: 'employee_status', label: 'Status', filterable: true },
 ];
 
 function downloadCSV(data, columns, filename) {
@@ -86,17 +86,137 @@ function downloadCSV(data, columns, filename) {
   URL.revokeObjectURL(url);
 }
 
+/* Excel-style filter dropdown */
+function ColumnFilter({ columnKey, data, activeFilters, onApply, onClose }) {
+  const ref = useRef(null);
+  const [filterSearch, setFilterSearch] = useState('');
+  const allValues = useMemo(() => {
+    const vals = new Set();
+    data.forEach(row => {
+      const v = String(row[columnKey] ?? '').trim();
+      if (v) vals.add(v);
+    });
+    return Array.from(vals).sort();
+  }, [data, columnKey]);
+
+  const current = activeFilters[columnKey] || [];
+  const [selected, setSelected] = useState(() => current.length > 0 ? new Set(current) : new Set(allValues));
+
+  const filtered = filterSearch
+    ? allValues.filter(v => v.toLowerCase().includes(filterSearch.toLowerCase()))
+    : allValues;
+
+  useEffect(() => {
+    const handleClick = (e) => {
+      if (ref.current && !ref.current.contains(e.target)) onClose();
+    };
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, [onClose]);
+
+  const toggleAll = () => {
+    if (selected.size === allValues.length) {
+      setSelected(new Set());
+    } else {
+      setSelected(new Set(allValues));
+    }
+  };
+
+  const toggle = (val) => {
+    const next = new Set(selected);
+    if (next.has(val)) next.delete(val);
+    else next.add(val);
+    setSelected(next);
+  };
+
+  const apply = () => {
+    if (selected.size === allValues.length) {
+      // All selected = no filter
+      onApply(columnKey, []);
+    } else {
+      onApply(columnKey, Array.from(selected));
+    }
+    onClose();
+  };
+
+  const clear = () => {
+    onApply(columnKey, []);
+    onClose();
+  };
+
+  return (
+    <div ref={ref} className="absolute top-full left-0 mt-1 w-52 bg-card rounded-lg shadow-lg border border-border z-50 animate-fade-in" data-testid={`col-filter-${columnKey}`}>
+      <div className="p-2 border-b border-border">
+        <div className="relative">
+          <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 text-muted-foreground" />
+          <input
+            type="text"
+            value={filterSearch}
+            onChange={e => setFilterSearch(e.target.value)}
+            placeholder="Search..."
+            className="w-full pl-7 pr-2 py-1 text-xs rounded border border-border bg-background focus:outline-none focus:ring-1 focus:ring-primary/40"
+            autoFocus
+          />
+        </div>
+      </div>
+      <div className="p-1 border-b border-border">
+        <button onClick={toggleAll} className="w-full flex items-center gap-2 px-2 py-1 text-xs rounded hover:bg-muted/50">
+          <div className={`w-3.5 h-3.5 rounded border flex items-center justify-center ${selected.size === allValues.length ? 'bg-primary border-primary' : 'border-border'}`}>
+            {selected.size === allValues.length && <Check className="w-2.5 h-2.5 text-white" />}
+          </div>
+          <span className="font-medium">(Select All)</span>
+        </button>
+      </div>
+      <div className="max-h-44 overflow-y-auto p-1">
+        {filtered.length === 0 ? (
+          <p className="text-xs text-muted-foreground text-center py-2">No matches</p>
+        ) : filtered.map(val => (
+          <button
+            key={val}
+            onClick={() => toggle(val)}
+            className="w-full flex items-center gap-2 px-2 py-1 text-xs rounded hover:bg-muted/50"
+          >
+            <div className={`w-3.5 h-3.5 rounded border flex items-center justify-center flex-shrink-0 ${selected.has(val) ? 'bg-primary border-primary' : 'border-border'}`}>
+              {selected.has(val) && <Check className="w-2.5 h-2.5 text-white" />}
+            </div>
+            <span className="truncate text-left">{val}</span>
+          </button>
+        ))}
+      </div>
+      <div className="flex gap-1.5 p-2 border-t border-border">
+        <Button variant="ghost" size="sm" className="flex-1 h-7 text-xs" onClick={clear}>Clear</Button>
+        <Button size="sm" className="flex-1 h-7 text-xs bg-primary text-white" onClick={apply}>Apply</Button>
+      </div>
+    </div>
+  );
+}
+
 function DataTable({ data, columns, title, filename }) {
   const [search, setSearch] = useState('');
   const [sortKey, setSortKey] = useState(null);
   const [sortDir, setSortDir] = useState('asc');
   const [page, setPage] = useState(0);
+  const [colFilters, setColFilters] = useState({});
+  const [openFilter, setOpenFilter] = useState(null);
+
+  const activeFilterCount = Object.values(colFilters).filter(v => v.length > 0).length;
 
   const filtered = useMemo(() => {
-    if (!search) return data;
-    const q = search.toLowerCase();
-    return data.filter(row => columns.some(c => String(row[c.key] ?? '').toLowerCase().includes(q)));
-  }, [data, search, columns]);
+    let result = data;
+    // Apply column filters
+    for (const [key, vals] of Object.entries(colFilters)) {
+      if (vals.length > 0) {
+        const set = new Set(vals);
+        result = result.filter(row => set.has(String(row[key] ?? '').trim()));
+      }
+    }
+    // Apply text search
+    if (search) {
+      const q = search.toLowerCase();
+      result = result.filter(row => columns.some(c => String(row[c.key] ?? '').toLowerCase().includes(q)));
+    }
+    return result;
+  }, [data, search, columns, colFilters]);
 
   const sorted = useMemo(() => {
     if (!sortKey) return filtered;
@@ -112,12 +232,19 @@ function DataTable({ data, columns, title, filename }) {
   const paged = sorted.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
 
   const handleSort = (key) => {
-    if (sortKey === key) {
-      setSortDir(d => d === 'asc' ? 'desc' : 'asc');
-    } else {
-      setSortKey(key);
-      setSortDir('asc');
-    }
+    if (sortKey === key) setSortDir(d => d === 'asc' ? 'desc' : 'asc');
+    else { setSortKey(key); setSortDir('asc'); }
+    setPage(0);
+  };
+
+  const handleFilterApply = (key, vals) => {
+    setColFilters(prev => ({ ...prev, [key]: vals }));
+    setPage(0);
+  };
+
+  const clearAllFilters = () => {
+    setColFilters({});
+    setSearch('');
     setPage(0);
   };
 
@@ -135,7 +262,14 @@ function DataTable({ data, columns, title, filename }) {
     <Card className="shadow-card">
       <CardContent className="p-4">
         <div className="flex items-center justify-between gap-3 mb-4 flex-wrap">
-          <h3 className="font-heading font-semibold text-sm text-foreground">{title} ({sorted.length})</h3>
+          <div className="flex items-center gap-2">
+            <h3 className="font-heading font-semibold text-sm text-foreground">{title} ({sorted.length})</h3>
+            {activeFilterCount > 0 && (
+              <button onClick={clearAllFilters} className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-primary/10 text-primary text-[10px] font-medium hover:bg-primary/20">
+                <Filter className="w-2.5 h-2.5" /> {activeFilterCount} filter{activeFilterCount > 1 ? 's' : ''} <X className="w-2.5 h-2.5" />
+              </button>
+            )}
+          </div>
           <div className="flex items-center gap-2">
             <div className="relative">
               <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
@@ -161,17 +295,40 @@ function DataTable({ data, columns, title, filename }) {
             <thead>
               <tr className="bg-muted/50">
                 {columns.map(col => (
-                  <th
-                    key={col.key}
-                    className="text-left py-2 px-2.5 font-semibold text-muted-foreground whitespace-nowrap cursor-pointer hover:text-foreground select-none"
-                    onClick={() => handleSort(col.key)}
-                  >
-                    <span className="inline-flex items-center gap-0.5">
-                      {col.label}
-                      {sortKey === col.key && (
-                        sortDir === 'asc' ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />
+                  <th key={col.key} className="text-left py-2 px-2.5 font-semibold text-muted-foreground whitespace-nowrap select-none">
+                    <div className="flex items-center gap-1">
+                      <span
+                        className="cursor-pointer hover:text-foreground inline-flex items-center gap-0.5"
+                        onClick={() => handleSort(col.key)}
+                      >
+                        {col.label}
+                        {sortKey === col.key && (
+                          sortDir === 'asc' ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />
+                        )}
+                      </span>
+                      {col.filterable && (
+                        <div className="relative">
+                          <button
+                            className={`w-4 h-4 rounded flex items-center justify-center transition-colors ${
+                              colFilters[col.key]?.length > 0 ? 'bg-primary text-white' : 'hover:bg-muted text-muted-foreground hover:text-foreground'
+                            }`}
+                            onClick={(e) => { e.stopPropagation(); setOpenFilter(openFilter === col.key ? null : col.key); }}
+                            data-testid={`filter-btn-${col.key}`}
+                          >
+                            <Filter className="w-2.5 h-2.5" />
+                          </button>
+                          {openFilter === col.key && (
+                            <ColumnFilter
+                              columnKey={col.key}
+                              data={data}
+                              activeFilters={colFilters}
+                              onApply={handleFilterApply}
+                              onClose={() => setOpenFilter(null)}
+                            />
+                          )}
+                        </div>
                       )}
-                    </span>
+                    </div>
                   </th>
                 ))}
               </tr>
@@ -279,7 +436,6 @@ export default function AdminMIS({ mis }) {
       {/* Charts Tab */}
       {subTab === 'charts' && (
         <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">
-          {/* 1. Coaching Status Donut */}
           <ChartCard title="Coaching Status Breakdown">
             {charts.coaching_status?.length > 0 ? (
               <ResponsiveContainer width="100%" height={220}>
@@ -291,10 +447,9 @@ export default function AdminMIS({ mis }) {
                   <Tooltip contentStyle={TT} />
                 </PieChart>
               </ResponsiveContainer>
-            ) : <div className="h-52 flex items-center justify-center text-xs text-muted-foreground">No data</div>}
+            ) : <p className="h-52 flex items-center justify-center text-xs text-muted-foreground">No data</p>}
           </ChartCard>
 
-          {/* 2. Coaches by Region */}
           <ChartCard title="Coaches by Region">
             {charts.coaches_by_region?.length > 0 ? (
               <ResponsiveContainer width="100%" height={220}>
@@ -306,10 +461,9 @@ export default function AdminMIS({ mis }) {
                   <Bar dataKey="count" fill="hsl(271,65%,28%)" radius={RADIUS} name="Coaches" />
                 </BarChart>
               </ResponsiveContainer>
-            ) : <div className="h-52 flex items-center justify-center text-xs text-muted-foreground">No data</div>}
+            ) : <p className="h-52 flex items-center justify-center text-xs text-muted-foreground">No data</p>}
           </ChartCard>
 
-          {/* 3. Coachees by BU */}
           <ChartCard title="Coachees by Business Unit">
             {charts.coachees_by_bu?.length > 0 ? (
               <ResponsiveContainer width="100%" height={220}>
@@ -321,10 +475,9 @@ export default function AdminMIS({ mis }) {
                   <Bar dataKey="count" fill="hsl(142,71%,42%)" radius={[0,4,4,0]} name="Coachees" />
                 </BarChart>
               </ResponsiveContainer>
-            ) : <div className="h-52 flex items-center justify-center text-xs text-muted-foreground">No data</div>}
+            ) : <p className="h-52 flex items-center justify-center text-xs text-muted-foreground">No data</p>}
           </ChartCard>
 
-          {/* 4. Gender Distribution */}
           <ChartCard title="Gender Distribution">
             {charts.gender_distribution?.length > 0 ? (
               <ResponsiveContainer width="100%" height={220}>
@@ -338,10 +491,9 @@ export default function AdminMIS({ mis }) {
                   <Bar dataKey="coachees" fill="hsl(200,65%,50%)" radius={RADIUS} name="Coachees" />
                 </BarChart>
               </ResponsiveContainer>
-            ) : <div className="h-52 flex items-center justify-center text-xs text-muted-foreground">No data</div>}
+            ) : <p className="h-52 flex items-center justify-center text-xs text-muted-foreground">No data</p>}
           </ChartCard>
 
-          {/* 5. Capacity by Tier */}
           <ChartCard title="Coach Capacity by Tier">
             {charts.capacity_by_tier?.length > 0 ? (
               <ResponsiveContainer width="100%" height={220}>
@@ -356,10 +508,9 @@ export default function AdminMIS({ mis }) {
                   <Bar dataKey="available" fill="hsl(142,71%,42%)" radius={RADIUS} name="Available" />
                 </BarChart>
               </ResponsiveContainer>
-            ) : <div className="h-52 flex items-center justify-center text-xs text-muted-foreground">No data</div>}
+            ) : <p className="h-52 flex items-center justify-center text-xs text-muted-foreground">No data</p>}
           </ChartCard>
 
-          {/* 6. Top Coaches */}
           <ChartCard title="Top Coaches by Coachees Assigned">
             {charts.top_coaches?.length > 0 ? (
               <ResponsiveContainer width="100%" height={220}>
@@ -373,10 +524,9 @@ export default function AdminMIS({ mis }) {
                   <Bar dataKey="completed" fill="hsl(142,71%,42%)" radius={RADIUS} name="Completed" />
                 </BarChart>
               </ResponsiveContainer>
-            ) : <div className="h-52 flex items-center justify-center text-xs text-muted-foreground">No data</div>}
+            ) : <p className="h-52 flex items-center justify-center text-xs text-muted-foreground">No data</p>}
           </ChartCard>
 
-          {/* 7. Nomination Split */}
           <ChartCard title="Nomination Type Split">
             {charts.nomination_split?.length > 0 ? (
               <ResponsiveContainer width="100%" height={220}>
@@ -388,10 +538,9 @@ export default function AdminMIS({ mis }) {
                   <Tooltip contentStyle={TT} />
                 </PieChart>
               </ResponsiveContainer>
-            ) : <div className="h-52 flex items-center justify-center text-xs text-muted-foreground">No data</div>}
+            ) : <p className="h-52 flex items-center justify-center text-xs text-muted-foreground">No data</p>}
           </ChartCard>
 
-          {/* 8. Sessions Bucket */}
           <ChartCard title="Coachees by Sessions Completed">
             {charts.sessions_bucket?.length > 0 ? (
               <ResponsiveContainer width="100%" height={220}>
@@ -403,10 +552,9 @@ export default function AdminMIS({ mis }) {
                   <Bar dataKey="count" fill="hsl(352,83%,55%)" radius={RADIUS} name="Coachees" />
                 </BarChart>
               </ResponsiveContainer>
-            ) : <div className="h-52 flex items-center justify-center text-xs text-muted-foreground">No data</div>}
+            ) : <p className="h-52 flex items-center justify-center text-xs text-muted-foreground">No data</p>}
           </ChartCard>
 
-          {/* 9. Employee Status */}
           <ChartCard title="Employee Status (All)">
             {charts.employee_status?.length > 0 ? (
               <ResponsiveContainer width="100%" height={220}>
@@ -418,22 +566,19 @@ export default function AdminMIS({ mis }) {
                   <Tooltip contentStyle={TT} />
                 </PieChart>
               </ResponsiveContainer>
-            ) : <div className="h-52 flex items-center justify-center text-xs text-muted-foreground">No data</div>}
+            ) : <p className="h-52 flex items-center justify-center text-xs text-muted-foreground">No data</p>}
           </ChartCard>
         </div>
       )}
 
-      {/* Coach Details Tab */}
       {subTab === 'coaches' && (
         <DataTable data={coachDetails} columns={COACH_COLS} title="Coach Details" filename="coach_details" />
       )}
 
-      {/* Coachee Details Tab */}
       {subTab === 'coachees' && (
         <DataTable data={coacheeDetails} columns={COACHEE_COLS} title="Coachee Details" filename="coachee_details" />
       )}
 
-      {/* Coach Occupancy Tab */}
       {subTab === 'occupancy' && (
         <DataTable data={coachDetails} columns={OCCUPANCY_COLS} title="Coach Occupancy" filename="coach_occupancy" />
       )}

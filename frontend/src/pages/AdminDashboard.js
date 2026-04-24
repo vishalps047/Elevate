@@ -11,9 +11,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../components/
 import AdminRegistrations from '../components/AdminRegistrations';
 import AdminMIS from '../components/AdminMIS';
 import {
-  Users, Calendar, TrendingUp, Award, Clock, CheckCircle, BarChart3,
-  ChevronRight, Star, ArrowLeft, Pause, AlertCircle, BookOpen, Eye,
-  UserPlus, ClipboardList, FileSpreadsheet, Check, X, MapPin, Building2
+  Users, Calendar, TrendingUp, Award, Clock, CheckCircle,
+  ChevronRight, Star, Pause, Eye,
+  UserPlus, FileSpreadsheet
 } from 'lucide-react';
 import { toast } from 'sonner';
 import {
@@ -62,7 +62,7 @@ export default function AdminDashboard() {
   const [registrations, setRegistrations] = useState([]);
   const [mis, setMis] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState('overview');
+  const [activeTab, setActiveTab] = useState('registrations');
   const [userModal, setUserModal] = useState({ open: false, data: null, loading: false });
   const [regFilter, setRegFilter] = useState('pending');
 
@@ -158,7 +158,6 @@ export default function AdminDashboard() {
         {/* Tabs */}
         <div className="flex gap-2 mb-6 border-b border-border pb-3 overflow-x-auto">
           {[
-            { key: 'overview', label: 'Charts & Trends', icon: BarChart3 },
             { key: 'registrations', label: `Registrations ${registrations.filter(r => r.status === 'pending').length ? `(${registrations.filter(r => r.status === 'pending').length})` : ''}`, icon: UserPlus },
             { key: 'coaches', label: 'Coaches', icon: Award },
             { key: 'coachees', label: 'Coachees', icon: Users },
@@ -175,146 +174,6 @@ export default function AdminDashboard() {
             </Button>
           ))}
         </div>
-
-        {/* Overview Tab - Charts */}
-        {activeTab === 'overview' && (
-          <div className="space-y-6">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {/* Coach Utilization */}
-              <Card className="shadow-card">
-                <CardContent className="p-5">
-                  <h3 className="font-heading font-semibold text-sm text-foreground mb-4">Coach Utilization (Sessions per Coach)</h3>
-                  {trends?.coach_utilization?.length > 0 ? (
-                    <ResponsiveContainer width="100%" height={260}>
-                      <BarChart data={trends.coach_utilization}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                        <XAxis dataKey="name" tick={CHART_TICK} />
-                        <YAxis tick={CHART_TICK} />
-                        <Tooltip contentStyle={CHART_TOOLTIP} />
-                        <Bar dataKey="sessions" fill="hsl(271, 65%, 28%)" radius={BAR_RADIUS} />
-                      </BarChart>
-                    </ResponsiveContainer>
-                  ) : (
-                    <div className="h-64 flex items-center justify-center text-sm text-muted-foreground">No session data yet</div>
-                  )}
-                </CardContent>
-              </Card>
-
-              {/* Requests Trends */}
-              <Card className="shadow-card">
-                <CardContent className="p-5">
-                  <h3 className="font-heading font-semibold text-sm text-foreground mb-4">Request Trends Over Time</h3>
-                  {trends?.requests_by_month?.length > 0 ? (
-                    <ResponsiveContainer width="100%" height={260}>
-                      <LineChart data={trends.requests_by_month}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                        <XAxis dataKey="month" tick={CHART_TICK} />
-                        <YAxis tick={CHART_TICK} />
-                        <Tooltip contentStyle={CHART_TOOLTIP} />
-                        <Legend wrapperStyle={CHART_LEGEND} />
-                        <Line type="monotone" dataKey="total" stroke="hsl(271, 65%, 28%)" name="Submitted" strokeWidth={2} dot={CHART_DOT} />
-                        <Line type="monotone" dataKey="completed" stroke="hsl(142, 71%, 42%)" name="Completed" strokeWidth={2} dot={CHART_DOT} />
-                      </LineChart>
-                    </ResponsiveContainer>
-                  ) : (
-                    <div className="h-64 flex items-center justify-center text-sm text-muted-foreground">No trend data yet</div>
-                  )}
-                </CardContent>
-              </Card>
-
-              {/* Session Trend */}
-              <Card className="shadow-card">
-                <CardContent className="p-5">
-                  <h3 className="font-heading font-semibold text-sm text-foreground mb-4">Sessions Over Time</h3>
-                  {trends?.sessions_by_month?.length > 0 ? (
-                    <ResponsiveContainer width="100%" height={260}>
-                      <BarChart data={trends.sessions_by_month}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                        <XAxis dataKey="month" tick={CHART_TICK} />
-                        <YAxis tick={CHART_TICK} />
-                        <Tooltip contentStyle={CHART_TOOLTIP} />
-                        <Bar dataKey="count" fill="hsl(142, 71%, 42%)" name="Sessions" radius={BAR_RADIUS} />
-                      </BarChart>
-                    </ResponsiveContainer>
-                  ) : (
-                    <div className="h-64 flex items-center justify-center text-sm text-muted-foreground">No session data yet</div>
-                  )}
-                </CardContent>
-              </Card>
-
-              {/* Expertise Distribution */}
-              <Card className="shadow-card">
-                <CardContent className="p-5">
-                  <h3 className="font-heading font-semibold text-sm text-foreground mb-4">Coach Expertise Distribution</h3>
-                  {trends?.expertise_distribution?.length > 0 ? (
-                    <ResponsiveContainer width="100%" height={260}>
-                      <PieChart>
-                        <Pie
-                          data={trends.expertise_distribution}
-                          cx="50%"
-                          cy="50%"
-                          outerRadius={90}
-                          innerRadius={45}
-                          dataKey="value"
-                          nameKey="name"
-                          label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-                          labelLine={false}
-                        >
-                          {trends.expertise_distribution.map((entry, i) => (
-                            <Cell key={entry.name || i} fill={CHART_COLORS[i % CHART_COLORS.length]} />
-                          ))}
-                        </Pie>
-                        <Tooltip contentStyle={CHART_TOOLTIP} />
-                      </PieChart>
-                    </ResponsiveContainer>
-                  ) : (
-                    <div className="h-64 flex items-center justify-center text-sm text-muted-foreground">No expertise data</div>
-                  )}
-                </CardContent>
-              </Card>
-            </div>
-
-            {/* Top Performing Coaches */}
-            {topCoaches.length > 0 && (
-              <Card className="shadow-card">
-                <CardContent className="p-5">
-                  <h3 className="font-heading font-semibold text-sm text-foreground mb-4">Top Performing Coaches (by Feedback Rating)</h3>
-                  <div className="space-y-3">
-                    {topCoaches.map((coach, idx) => (
-                      <div key={coach.id} className="flex items-center gap-3 p-3 rounded-xl bg-muted/30 border border-border cursor-pointer hover:bg-muted/50 transition-fast" onClick={() => openUserHistory(coach.id)} data-testid={`top-coach-${coach.id}`}>
-                        <span className={`w-7 h-7 flex items-center justify-center rounded-full text-xs font-bold ${idx === 0 ? 'bg-warning/20 text-warning' : idx === 1 ? 'bg-muted text-muted-foreground' : 'bg-accent/10 text-accent'}`}>
-                          {idx + 1}
-                        </span>
-                        <Avatar className="w-9 h-9">
-                          <AvatarImage src={coach.avatar} />
-                          <AvatarFallback className="bg-primary/10 text-primary text-xs">{coach.name?.[0]}</AvatarFallback>
-                        </Avatar>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium text-foreground truncate">{coach.name}</p>
-                          <p className="text-xs text-muted-foreground">{coach.title}</p>
-                        </div>
-                        <div className="flex items-center gap-4 text-right flex-shrink-0">
-                          <div>
-                            <div className="flex items-center gap-1">
-                              <Star className="w-3.5 h-3.5 fill-warning text-warning" />
-                              <span className="text-sm font-bold text-foreground">{coach.feedback_rating}</span>
-                            </div>
-                            <p className="text-xs text-muted-foreground">{coach.feedback_count} reviews</p>
-                          </div>
-                          <div className="text-center">
-                            <p className="text-sm font-bold text-foreground">{coach.session_count}</p>
-                            <p className="text-xs text-muted-foreground">sessions</p>
-                          </div>
-                          <ChevronRight className="w-4 h-4 text-muted-foreground" />
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-          </div>
-        )}
 
         {/* Coaches Tab */}
         {activeTab === 'coaches' && (
