@@ -116,6 +116,15 @@ async def approve_registration(reg_id: str, user: dict = Depends(get_current_use
         raise HTTPException(status_code=400, detail="Registration already processed")
 
     # Create user account
+    REGION_MAP = {
+        "DEL": "North", "New Delhi": "North", "NCR": "North",
+        "MUM": "West", "Mumbai": "West", "PUN": "West", "Pune": "West",
+        "BLR": "South", "Bangalore": "South", "CHN": "South", "Chennai": "South",
+        "HYD": "South", "Hyderabad": "South", "KOL": "East", "Kolkata": "East",
+    }
+    loc = reg.get("location", "")
+    region = REGION_MAP.get(loc, "North")
+
     new_user = {
         "id": str(uuid.uuid4()),
         "email": reg["email"],
@@ -123,10 +132,13 @@ async def approve_registration(reg_id: str, user: dict = Depends(get_current_use
         "name": reg["name"],
         "role": reg["role"],
         "avatar": "",
+        "gender": reg.get("gender", ""),
+        "region": region,
+        "employee_status": "Active",
         "date_of_joining": reg.get("date_of_joining", ""),
         "tier": reg.get("tier", ""),
         "designation": reg.get("designation", ""),
-        "location": reg.get("location", ""),
+        "location": loc,
         "business_unit": reg.get("business_unit", ""),
         "competency": reg.get("competency", ""),
         "co_supercoach": reg.get("co_supercoach", ""),
@@ -141,6 +153,9 @@ async def approve_registration(reg_id: str, user: dict = Depends(get_current_use
             "rating": 0,
             "total_sessions": 0,
             "slots": {"available": 3, "total": 3},
+            "capacity": 3,
+            "total_work_experience": 0,
+            "coaching_expertise": "",
             "certifications": [],
             "expertise": [],
             "domains": [],

@@ -191,88 +191,175 @@ async def get_trends(user: dict = Depends(get_current_user)):
 async def get_mis_report(user: dict = Depends(get_current_user)):
     require_admin(user)
 
-    # Coach occupancy: capacity, assigned, remaining
-    coaches = await db.users.find({"role": "coach"}, {"_id": 0, "password_hash": 0}).to_list(100)
-    coach_occupancy = []
+    # ── COACH DETAILS (all fields) ──
+    coaches = await db.users.find({"role": "coach"}, {"_id": 0, "password_hash": 0}).to_list(500)
+    coach_details = []
     for coach in coaches:
         active = await db.coaching_requests.count_documents(
             {"active_coach_id": coach["id"], "status": {"$in": ["accepted", "paused"]}}
         )
-        total_slots = coach.get("slots", {}).get("total", 3)
-        coach_occupancy.append({
+        completed = await db.coaching_requests.count_documents(
+            {"active_coach_id": coach["id"], "status": "completed"}
+        )
+        session_count = await db.sessions.count_documents({"coach_id": coach["id"]})
+        capacity = coach.get("capacity", coach.get("slots", {}).get("total", 2))
+        coach_details.append({
             "id": coach["id"],
-            "name": coach["name"],
+            "name": coach.get("name", ""),
+            "email": coach.get("email", ""),
+            "gender": coach.get("gender", ""),
+            "tier": coach.get("tier", "T1"),
             "designation": coach.get("designation", coach.get("title", "")),
             "location": coach.get("location", ""),
+            "region": coach.get("region", ""),
             "business_unit": coach.get("business_unit", ""),
-            "capacity": total_slots,
+            "competency": coach.get("competency", ""),
+            "total_work_experience": coach.get("total_work_experience", ""),
+            "coaching_expertise": coach.get("coaching_expertise", ""),
+            "certifications": ", ".join(coach.get("certifications", [])),
+            "expertise_areas": ", ".join(coach.get("expertise", [])),
+            "domains": ", ".join(coach.get("domains", [])),
+            "employee_status": coach.get("employee_status", "Active"),
+            "capacity": capacity,
             "assigned": active,
-            "remaining": max(total_slots - active, 0),
+            "remaining": max(capacity - active, 0),
+            "completed_journeys": completed,
+            "total_sessions": session_count,
+            "status": coach.get("status", "active"),
         })
 
-    # Coachee status breakdown
-    all_coachees = await db.users.find({"role": "coachee"}, {"_id": 0, "password_hash": 0}).to_list(200)
-    coachee_statuses = []
-    for coachee in all_coachees:
+    # ── COACHEE DETAILS (all fields) ──
+    coachees = await db.users.find({"role": "coachee"}, {"_id": 0, "password_hash": 0}).to_list(500)
+    coachee_details = []
+    for coachee in coachees:
         req = await db.coaching_requests.find_one(
             {"coachee_id": coachee["id"]}, {"_id": 0, "status": 1, "active_coach_id": 1, "mentorship_area": 1}
         )
         sessions_done = await db.sessions.count_documents({"coachee_id": coachee["id"], "status": "completed"})
-        status = "Unassigned"
+        total_sessions = await db.sessions.count_documents({"coachee_id": coachee["id"]})
+        coaching_status = "Not Started"
         coach_name = ""
         if req:
             if req["status"] == "accepted":
-                status = "Undergoing Coaching"
+                coaching_status = "In Progress"
             elif req["status"] == "paused":
-                status = "Paused"
+                coaching_status = "Paused"
             elif req["status"] == "completed":
-                status = "Completed"
+                coaching_status = "Completed"
             elif req["status"] == "pending":
-                status = "Pending Assignment"
+                coaching_status = "Pending Assignment"
             c = await db.users.find_one({"id": req.get("active_coach_id")}, {"_id": 0, "name": 1})
             coach_name = c["name"] if c else ""
 
-        coachee_statuses.append({
+        coachee_details.append({
             "id": coachee["id"],
-            "name": coachee["name"],
+            "name": coachee.get("name", ""),
             "email": coachee.get("email", ""),
+            "gender": coachee.get("gender", ""),
+            "tier": coachee.get("tier", ""),
             "designation": coachee.get("designation", coachee.get("job_title", "")),
             "location": coachee.get("location", ""),
+            "region": coachee.get("region", ""),
             "business_unit": coachee.get("business_unit", coachee.get("department", "")),
-            "tier": coachee.get("tier", ""),
+            "competency": coachee.get("competency", ""),
+            "date_of_joining": coachee.get("date_of_joining", ""),
             "enrolment_type": coachee.get("enrolment_type", ""),
-            "coaching_status": status,
+            "employee_status": coachee.get("employee_status", "Active"),
+            "coaching_status": coaching_status,
             "assigned_coach": coach_name,
             "sessions_completed": sessions_done,
+            "total_sessions": total_sessions,
+            "mentorship_area": req.get("mentorship_area", "") if req else "",
         })
 
-    # Location distribution
-    loc_pipeline = [
-        {"$match": {"role": {"$in": ["coach", "coachee"]}}},
-        {"$group": {"_id": "$location", "coaches": {"$sum": {"$cond": [{"$eq": ["$role", "coach"]}, 1, 0]}}, "coachees": {"$sum": {"$cond": [{"$eq": ["$role", "coachee"]}, 1, 0]}}}},
-        {"$sort": {"_id": 1}},
-    ]
-    location_dist = await db.users.aggregate(loc_pipeline).to_list(20)
+    # ── CHART AGGREGATIONS (all computed from real-time data) ──
 
-    # Business unit distribution
-    bu_pipeline = [
-        {"$match": {"role": {"$in": ["coach", "coachee"]}, "business_unit": {"$exists": True, "$ne": ""}}},
-        {"$group": {"_id": "$business_unit", "count": {"$sum": 1}}},
-        {"$sort": {"count": -1}},
-    ]
-    bu_dist = await db.users.aggregate(bu_pipeline).to_list(20)
+    # 1. Coaching status breakdown (donut)
+    status_counts = {}
+    for c in coachee_details:
+        s = c["coaching_status"]
+        status_counts[s] = status_counts.get(s, 0) + 1
+    chart_coaching_status = [{"name": k, "value": v} for k, v in status_counts.items()]
 
-    # Nomination type breakdown
-    enrol_pipeline = [
-        {"$match": {"role": "coachee", "enrolment_type": {"$exists": True, "$ne": ""}}},
-        {"$group": {"_id": "$enrolment_type", "count": {"$sum": 1}}},
-    ]
-    enrol_dist = await db.users.aggregate(enrol_pipeline).to_list(10)
+    # 2. Coaches by region (bar)
+    region_counts = {}
+    for c in coach_details:
+        r = c["region"] or "Unknown"
+        region_counts[r] = region_counts.get(r, 0) + 1
+    chart_coaches_by_region = [{"region": k, "count": v} for k, v in sorted(region_counts.items())]
+
+    # 3. Coachees by business unit (bar)
+    bu_counts = {}
+    for c in coachee_details:
+        bu = c["business_unit"] or "Unknown"
+        bu_counts[bu] = bu_counts.get(bu, 0) + 1
+    chart_coachees_by_bu = [{"name": k, "count": v} for k, v in sorted(bu_counts.items(), key=lambda x: -x[1])]
+
+    # 4. Gender distribution (grouped bar)
+    gender_data = {"Male": {"coaches": 0, "coachees": 0}, "Female": {"coaches": 0, "coachees": 0}}
+    for c in coach_details:
+        g = c["gender"] if c["gender"] in gender_data else "Male"
+        gender_data[g]["coaches"] += 1
+    for c in coachee_details:
+        g = c["gender"] if c["gender"] in gender_data else "Male"
+        gender_data[g]["coachees"] += 1
+    chart_gender = [{"gender": k, "coaches": v["coaches"], "coachees": v["coachees"]} for k, v in gender_data.items()]
+
+    # 5. Coach capacity by tier (grouped bar)
+    tier_cap = {}
+    for c in coach_details:
+        t = c["tier"] or "T1"
+        if t not in tier_cap:
+            tier_cap[t] = {"capacity": 0, "assigned": 0, "available": 0}
+        tier_cap[t]["capacity"] += c["capacity"]
+        tier_cap[t]["assigned"] += c["assigned"]
+        tier_cap[t]["available"] += c["remaining"]
+    chart_capacity_by_tier = [{"tier": k, **v} for k, v in sorted(tier_cap.items())]
+
+    # 6. Top coaches by coachees assigned (bar)
+    top_coaches = sorted(coach_details, key=lambda x: x["assigned"], reverse=True)[:10]
+    chart_top_coaches = [{"name": c["name"].split()[0], "assigned": c["assigned"], "completed": c["completed_journeys"]} for c in top_coaches]
+
+    # 7. Nomination type split (pie)
+    nom_counts = {}
+    for c in coachee_details:
+        n = c["enrolment_type"] or "Unknown"
+        nom_counts[n] = nom_counts.get(n, 0) + 1
+    chart_nomination = [{"name": k, "value": v} for k, v in nom_counts.items()]
+
+    # 8. Sessions completed bucket (bar)
+    buckets = {"0": 0, "1-3": 0, "4-6": 0, "7+": 0}
+    for c in coachee_details:
+        s = c["sessions_completed"]
+        if s == 0:
+            buckets["0"] += 1
+        elif s <= 3:
+            buckets["1-3"] += 1
+        elif s <= 6:
+            buckets["4-6"] += 1
+        else:
+            buckets["7+"] += 1
+    chart_sessions_bucket = [{"bucket": k, "count": v} for k, v in buckets.items()]
+
+    # 9. Employee status split (donut) - combined coaches + coachees
+    emp_status = {}
+    for c in coach_details + coachee_details:
+        s = c["employee_status"] or "Active"
+        emp_status[s] = emp_status.get(s, 0) + 1
+    chart_employee_status = [{"name": k, "value": v} for k, v in emp_status.items()]
 
     return {
-        "coach_occupancy": coach_occupancy,
-        "coachee_statuses": coachee_statuses,
-        "location_distribution": [{"location": loc["_id"] or "Unknown", "coaches": loc["coaches"], "coachees": loc["coachees"]} for loc in location_dist if loc["_id"]],
-        "business_unit_distribution": [{"name": b["_id"], "value": b["count"]} for b in bu_dist if b["_id"]],
-        "nomination_breakdown": [{"type": e["_id"], "count": e["count"]} for e in enrol_dist if e["_id"]],
+        "coach_details": coach_details,
+        "coachee_details": coachee_details,
+        "charts": {
+            "coaching_status": chart_coaching_status,
+            "coaches_by_region": chart_coaches_by_region,
+            "coachees_by_bu": chart_coachees_by_bu,
+            "gender_distribution": chart_gender,
+            "capacity_by_tier": chart_capacity_by_tier,
+            "top_coaches": chart_top_coaches,
+            "nomination_split": chart_nomination,
+            "sessions_bucket": chart_sessions_bucket,
+            "employee_status": chart_employee_status,
+        },
     }

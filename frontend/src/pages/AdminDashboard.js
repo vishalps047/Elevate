@@ -425,7 +425,7 @@ export default function AdminDashboard() {
 
         {/* MIS Reports Tab */}
         {activeTab === 'mis' && (
-          <AdminMIS mis={mis} onDrillDown={openUserHistory} />
+          <AdminMIS mis={mis} />
         )}
 
       </div>
