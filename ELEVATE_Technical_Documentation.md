@@ -546,44 +546,93 @@ For initial rollout with <50 users:
 
 ## 11. Deployment Architecture
 
-### 11.1 Production Deployment (Azure)
+### 11.1 Production Architecture Diagram
+
+> **View the full interactive architecture diagram at:** `/architecture.html`
+>
+> ![ELEVATE Azure Cloud Architecture](architecture.html)
+
+The diagram shows the complete production deployment on Microsoft Azure with the following resource flow:
 
 ```
-                    ┌──────────────┐
-                    │  Azure DNS   │
-                    │elevate.gt.com│
-                    └──────┬───────┘
-                           │
-                    ┌──────┴───────┐
-                    │ Azure Front  │
-                    │   Door /     │
-                    │   CDN        │
-                    └──────┬───────┘
-                           │
-              ┌────────────┴─────────────┐
-              │                          │
-     ┌────────┴────────┐     ┌──────────┴──────────┐
-     │ Azure Static    │     │  Azure App Service   │
-     │ Web Apps        │     │  (Linux, Python)     │
-     │                 │     │                      │
-     │ React SPA       │     │  FastAPI Backend     │
-     │ (CDN-served)    │     │  + Background Tasks  │
-     │                 │     │                      │
-     └─────────────────┘     └──────────┬───────────┘
-                                        │
-                           ┌────────────┴────────────┐
-                           │                         │
-                  ┌────────┴────────┐    ┌──────────┴──────────┐
-                  │ Azure Cosmos DB │    │  Azure Blob Storage  │
-                  │ (MongoDB API)   │    │  (Profile photos)    │
-                  │                 │    │                      │
-                  └─────────────────┘    └──────────────────────┘
-                           │
-                  ┌────────┴────────┐
-                  │   Azure AD      │
-                  │ (SSO / Graph)   │
-                  └─────────────────┘
+Users (Coaches/Coachees/Admin)
+  │
+  ▼
+Azure DNS (elevate.in.gt.com)
+  │
+  ▼
+Azure Front Door + WAF ─────────────────────────────────┐
+  │                                                      │
+  ├──► Azure Static Web Apps (React Frontend + CDN)      │
+  │         │                                            │
+  │         └──► Azure Blob Storage (Profile Photos)     │
+  │                                                      │
+  └──► Azure App Service [Virtual Network]               │
+          │  FastAPI Backend + Background Tasks           │
+          │  Auto-Scale Group (B2/S1)                     │
+          │                                              │
+          ├──► Azure Cosmos DB (MongoDB API)              │
+          │      users, sessions, emails,                 │
+          │      requests, feedback                       │
+          │         │                                     │
+          │         └──► Azure Backup (Daily)             │
+          │                                              │
+          ├──► Azure Key Vault                            │
+          │      JWT Secrets, API Keys, Certs             │
+          │                                              │
+          ├──► Azure Active Directory                     │
+          │      SSO / OAuth 2.0                          │
+          │         │                                     │
+          │         └──► Microsoft Graph API              │
+          │               Employee Profile Auto-Fill      │
+          │                                              │
+          └──► Monitoring & Logging                       │
+                 ├── Application Insights (APM)           │
+                 └── Log Analytics (Audit Trail/SIEM)     │
+                                                          │
+                 Security & Services ◄────────────────────┘
+                    ├── HSTS + CSP (Security Headers)
+                    ├── Rate Limiting (Brute Force Block)
+                    ├── Input Validation (NoSQL/XSS)
+                    ├── Azure Communication Services (Email)
+                    └── Audit Logging (Auth Events)
 ```
+
+### 11.2 Complete Azure Resource Inventory
+
+| # | Resource Name | Azure Service | SKU / Tier | Purpose | Estimated Cost |
+|---|--------------|---------------|------------|---------|----------------|
+| 1 | `elevate-dns` | **Azure DNS** | Standard | Domain: elevate.in.gt.com, DNS resolution | ~$1/mo |
+| 2 | `elevate-frontdoor` | **Azure Front Door** | Standard | Global load balancing, CDN, SSL termination | ~$35/mo |
+| 3 | `elevate-waf` | **Web Application Firewall** | WAF Policy on Front Door | DDoS protection, OWASP rule sets, bot protection | Included |
+| 4 | `elevate-frontend` | **Azure Static Web Apps** | Standard | React.js SPA hosting, global CDN edge delivery | ~$9/mo |
+| 5 | `elevate-backend` | **Azure App Service** | B2 (2 vCPU, 3.5GB) Linux | FastAPI server, background tasks, auto-scale ready | ~$55/mo |
+| 6 | `elevate-vnet` | **Virtual Network** | Standard | Network isolation for backend + database | ~$0 |
+| 7 | `elevate-db` | **Azure Cosmos DB** | MongoDB API, 1000 RU/s | Primary database: users, sessions, emails, requests, feedback, registrations, notifications, availability | ~$25-50/mo |
+| 8 | `elevate-storage` | **Azure Blob Storage** | Hot tier, LRS | Profile photos, uploaded avatars, static assets | ~$2/mo |
+| 9 | `elevate-keyvault` | **Azure Key Vault** | Standard | JWT_SECRET, Azure AD secrets, API keys, TLS certs | ~$0.03/op |
+| 10 | `elevate-aad-app` | **Azure Active Directory** | Existing tenant | SSO via OAuth 2.0/OIDC, employee identity, Microsoft Graph | $0 (included) |
+| 11 | `elevate-graph` | **Microsoft Graph API** | Delegated permissions | Employee profile auto-fill (name, email, dept, title, office) | $0 (included) |
+| 12 | `elevate-email` | **Azure Communication Services** | Pay-as-you-go | SMTP email delivery for coaching notifications (16 templates) | ~$0-10/mo |
+| 13 | `elevate-insights` | **Application Insights** | Basic | APM, request tracing, performance metrics, error tracking | ~$0-5/mo |
+| 14 | `elevate-logs` | **Log Analytics Workspace** | Pay-as-you-go | Audit trail, SIEM integration, security event logging | ~$2-5/mo |
+| 15 | `elevate-backup` | **Cosmos DB Backup** | Continuous (7-day) | Point-in-time restore, automated daily backups | Included |
+| | | | | **Total Estimated** | **~$130-175/mo** |
+
+### 11.3 Security Resources (Built-in, No Additional Cost)
+
+| Security Feature | Implementation | VAPT Coverage |
+|-----------------|----------------|---------------|
+| HSTS | `Strict-Transport-Security: max-age=31536000` | Transport security |
+| CSP | `Content-Security-Policy: frame-ancestors 'none'` | Clickjacking, XSS |
+| X-Frame-Options | `DENY` | Clickjacking |
+| X-Content-Type-Options | `nosniff` | MIME sniffing |
+| Rate Limiting | 5/min login, 3/min registration, 60/min general | Brute force |
+| Input Sanitization | NoSQL injection blocking, XSS tag stripping | Injection attacks |
+| File Upload Validation | Magic bytes + extension + MIME + size check | Malicious uploads |
+| JWT Hardening | 8h expiry, 32+ char secret, HS256 | Session hijacking |
+| Error Handling | No stack traces, no schema leaks | Information disclosure |
+| Audit Logging | All auth events, admin ops, IP tracking | Forensics/compliance |
 
 ### 11.2 Environment Variables
 
