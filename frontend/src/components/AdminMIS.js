@@ -3,7 +3,7 @@ import { Card, CardContent } from './ui/card';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Badge } from './ui/badge';
-import { Search, Download, ChevronUp, ChevronDown, ChevronLeft, ChevronRight, BarChart3, Users, Award, Briefcase, Filter, X, Check } from 'lucide-react';
+import { Search, Download, ChevronUp, ChevronDown, ChevronLeft, ChevronRight, BarChart3, Users, Award, Briefcase, Filter, X, Check, MessageSquare, Star, Send, FileText } from 'lucide-react';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, Legend
@@ -399,6 +399,82 @@ function ChartCard({ title, children }) {
   );
 }
 
+function RatingBar({ data, average, title, color }) {
+  return (
+    <Card className="shadow-card">
+      <CardContent className="p-4">
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="font-heading font-semibold text-xs text-foreground">{title}</h3>
+          <div className="flex items-center gap-1 bg-primary/10 px-2 py-0.5 rounded-full">
+            <Star className="w-3 h-3 fill-primary text-primary" />
+            <span className="text-xs font-bold text-primary">{average}/5</span>
+          </div>
+        </div>
+        <ResponsiveContainer width="100%" height={180}>
+          <BarChart data={data}>
+            <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+            <XAxis dataKey="rating" tick={TICK} />
+            <YAxis tick={TICK} allowDecimals={false} />
+            <Tooltip contentStyle={TT} formatter={(v) => [`${v} responses`, 'Count']} />
+            <Bar dataKey="count" fill={color} radius={RADIUS} name="Responses" />
+          </BarChart>
+        </ResponsiveContainer>
+      </CardContent>
+    </Card>
+  );
+}
+
+function FeedbackTab({ feedback }) {
+  if (!feedback) return <p className="text-sm text-muted-foreground text-center py-8">No feedback data available</p>;
+  return (
+    <div className="space-y-5">
+      <div className="grid grid-cols-3 gap-3">
+        <Card className="shadow-card"><CardContent className="p-4 text-center">
+          <div className="flex items-center justify-center gap-2 mb-1"><Send className="w-4 h-4 text-primary" /><span className="text-2xl font-bold text-foreground">{feedback.total_sent}</span></div>
+          <p className="text-xs text-muted-foreground">Feedback Forms Sent</p>
+        </CardContent></Card>
+        <Card className="shadow-card"><CardContent className="p-4 text-center">
+          <div className="flex items-center justify-center gap-2 mb-1"><FileText className="w-4 h-4 text-success" /><span className="text-2xl font-bold text-foreground">{feedback.total_responses}</span></div>
+          <p className="text-xs text-muted-foreground">Responses Received</p>
+        </CardContent></Card>
+        <Card className="shadow-card"><CardContent className="p-4 text-center">
+          <div className="flex items-center justify-center gap-2 mb-1"><BarChart3 className="w-4 h-4 text-warning" /><span className="text-2xl font-bold text-foreground">{feedback.response_rate}%</span></div>
+          <p className="text-xs text-muted-foreground">Response Rate</p>
+        </CardContent></Card>
+      </div>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <RatingBar data={feedback.overall_experience?.distribution || []} average={feedback.overall_experience?.average || 0} title="Overall Experience" color="hsl(271,65%,28%)" />
+        <RatingBar data={feedback.coach_knowledge?.distribution || []} average={feedback.coach_knowledge?.average || 0} title="Coach Knowledge, Guidance & Engagement" color="hsl(142,71%,42%)" />
+        <RatingBar data={feedback.learning_effectiveness?.distribution || []} average={feedback.learning_effectiveness?.average || 0} title="Learning Journey Effectiveness" color="hsl(200,65%,50%)" />
+      </div>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <Card className="shadow-card"><CardContent className="p-4">
+          <h3 className="font-heading font-semibold text-xs text-foreground mb-3 flex items-center gap-1.5"><Star className="w-3.5 h-3.5 text-warning" /> What coachees found most valuable</h3>
+          <div className="space-y-3 max-h-[400px] overflow-y-auto pr-1">
+            {feedback.most_valuable?.length > 0 ? feedback.most_valuable.map((item, i) => (
+              <div key={i} className="p-3 rounded-lg bg-muted/30 border border-border/50">
+                <p className="text-xs text-foreground/85 leading-relaxed italic">"{item.text}"</p>
+                <p className="text-[10px] text-muted-foreground mt-1.5 font-medium">— {item.name}</p>
+              </div>
+            )) : <p className="text-xs text-muted-foreground text-center py-4">No responses yet</p>}
+          </div>
+        </CardContent></Card>
+        <Card className="shadow-card"><CardContent className="p-4">
+          <h3 className="font-heading font-semibold text-xs text-foreground mb-3 flex items-center gap-1.5"><MessageSquare className="w-3.5 h-3.5 text-primary" /> Suggestions & Recommendations</h3>
+          <div className="space-y-3 max-h-[400px] overflow-y-auto pr-1">
+            {feedback.suggestions?.length > 0 ? feedback.suggestions.map((item, i) => (
+              <div key={i} className="p-3 rounded-lg bg-muted/30 border border-border/50">
+                <p className="text-xs text-foreground/85 leading-relaxed italic">"{item.text}"</p>
+                <p className="text-[10px] text-muted-foreground mt-1.5 font-medium">— {item.name}</p>
+              </div>
+            )) : <p className="text-xs text-muted-foreground text-center py-4">No suggestions yet</p>}
+          </div>
+        </CardContent></Card>
+      </div>
+    </div>
+  );
+}
+
 export default function AdminMIS({ mis }) {
   const [subTab, setSubTab] = useState('charts');
 
@@ -407,9 +483,11 @@ export default function AdminMIS({ mis }) {
   const charts = mis.charts || {};
   const coachDetails = mis.coach_details || [];
   const coacheeDetails = mis.coachee_details || [];
+  const feedback = mis.feedback || null;
 
   const SUB_TABS = [
     { key: 'charts', label: 'Analytics', icon: BarChart3 },
+    { key: 'feedback', label: 'Feedback', icon: MessageSquare },
     { key: 'coaches', label: `Coach Details (${coachDetails.length})`, icon: Award },
     { key: 'coachees', label: `Coachee Details (${coacheeDetails.length})`, icon: Users },
     { key: 'occupancy', label: 'Coach Occupancy', icon: Briefcase },
@@ -450,15 +528,17 @@ export default function AdminMIS({ mis }) {
             ) : <p className="h-52 flex items-center justify-center text-xs text-muted-foreground">No data</p>}
           </ChartCard>
 
-          <ChartCard title="Coaches by Region">
-            {charts.coaches_by_region?.length > 0 ? (
+          <ChartCard title="Registered Coaches: Occupied vs Not Occupied by BU">
+            {charts.coach_occupancy_bu?.length > 0 ? (
               <ResponsiveContainer width="100%" height={220}>
-                <BarChart data={charts.coaches_by_region}>
+                <BarChart data={charts.coach_occupancy_bu}>
                   <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                  <XAxis dataKey="region" tick={TICK} />
+                  <XAxis dataKey="bu" tick={TICK} angle={-20} textAnchor="end" height={50} />
                   <YAxis tick={TICK} allowDecimals={false} />
                   <Tooltip contentStyle={TT} />
-                  <Bar dataKey="count" fill="hsl(271,65%,28%)" radius={RADIUS} name="Coaches" />
+                  <Legend wrapperStyle={{ fontSize: '11px' }} />
+                  <Bar dataKey="occupied" stackId="a" fill="hsl(271,65%,28%)" name="Occupied" />
+                  <Bar dataKey="not_occupied" stackId="a" fill="hsl(0,0%,82%)" radius={[4,4,0,0]} name="Not Occupied" />
                 </BarChart>
               </ResponsiveContainer>
             ) : <p className="h-52 flex items-center justify-center text-xs text-muted-foreground">No data</p>}
@@ -473,6 +553,34 @@ export default function AdminMIS({ mis }) {
                   <YAxis dataKey="name" type="category" tick={TICK} width={100} />
                   <Tooltip contentStyle={TT} />
                   <Bar dataKey="count" fill="hsl(142,71%,42%)" radius={[0,4,4,0]} name="Coachees" />
+                </BarChart>
+              </ResponsiveContainer>
+            ) : <p className="h-52 flex items-center justify-center text-xs text-muted-foreground">No data</p>}
+          </ChartCard>
+
+          <ChartCard title="Active Coaches by Designation">
+            {charts.coaches_by_designation?.length > 0 ? (
+              <ResponsiveContainer width="100%" height={220}>
+                <BarChart data={charts.coaches_by_designation}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                  <XAxis dataKey="designation" tick={TICK} angle={-15} textAnchor="end" height={50} />
+                  <YAxis tick={TICK} allowDecimals={false} />
+                  <Tooltip contentStyle={TT} />
+                  <Bar dataKey="count" fill="hsl(35,92%,55%)" radius={RADIUS} name="Coaches" />
+                </BarChart>
+              </ResponsiveContainer>
+            ) : <p className="h-52 flex items-center justify-center text-xs text-muted-foreground">No data</p>}
+          </ChartCard>
+
+          <ChartCard title="Active Coachees by Designation">
+            {charts.coachees_by_designation?.length > 0 ? (
+              <ResponsiveContainer width="100%" height={220}>
+                <BarChart data={charts.coachees_by_designation}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                  <XAxis dataKey="designation" tick={TICK} angle={-15} textAnchor="end" height={50} />
+                  <YAxis tick={TICK} allowDecimals={false} />
+                  <Tooltip contentStyle={TT} />
+                  <Bar dataKey="count" fill="hsl(200,65%,50%)" radius={RADIUS} name="Coachees" />
                 </BarChart>
               </ResponsiveContainer>
             ) : <p className="h-52 flex items-center justify-center text-xs text-muted-foreground">No data</p>}
@@ -570,6 +678,9 @@ export default function AdminMIS({ mis }) {
           </ChartCard>
         </div>
       )}
+
+      {/* Feedback Tab */}
+      {subTab === 'feedback' && <FeedbackTab feedback={feedback} />}
 
       {subTab === 'coaches' && (
         <DataTable data={coachDetails} columns={COACH_COLS} title="Coach Details" filename="coach_details" />

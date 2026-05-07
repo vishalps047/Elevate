@@ -348,9 +348,108 @@ async def get_mis_report(user: dict = Depends(get_current_user)):
         emp_status[s] = emp_status.get(s, 0) + 1
     chart_employee_status = [{"name": k, "value": v} for k, v in emp_status.items()]
 
+    # 10. Coach occupancy by BU (stacked: occupied vs not occupied)
+    bu_occupancy = {}
+    for c in coach_details:
+        bu = c["business_unit"] or "Other"
+        if bu not in bu_occupancy:
+            bu_occupancy[bu] = {"occupied": 0, "not_occupied": 0}
+        if c["assigned"] > 0:
+            bu_occupancy[bu]["occupied"] += 1
+        else:
+            bu_occupancy[bu]["not_occupied"] += 1
+    chart_coach_occupancy_bu = [{"bu": k, "occupied": v["occupied"], "not_occupied": v["not_occupied"]} for k, v in sorted(bu_occupancy.items())]
+
+    # 11. Coachees by BU (already have coachees_by_bu above)
+
+    # 12. Coaches by designation (bar)
+    desig_counts = {}
+    for c in coach_details:
+        d = c["designation"] or "Other"
+        desig_counts[d] = desig_counts.get(d, 0) + 1
+    chart_coaches_by_designation = [{"designation": k, "count": v} for k, v in sorted(desig_counts.items(), key=lambda x: -x[1])]
+
+    # 13. Coachees by designation (bar)
+    coachee_desig_counts = {}
+    for c in coachee_details:
+        d = c["designation"] or "Other"
+        coachee_desig_counts[d] = coachee_desig_counts.get(d, 0) + 1
+    chart_coachees_by_designation = [{"designation": k, "count": v} for k, v in sorted(coachee_desig_counts.items(), key=lambda x: -x[1])]
+
+    # ── FEEDBACK AGGREGATION ──
+    all_feedback = await db.feedback.find({}, {"_id": 0}).to_list(500)
+    total_completed = await db.coaching_requests.count_documents({"status": "completed"})
+    fb_count = len(all_feedback)
+    fb_response_rate = round((fb_count / total_completed * 100) if total_completed > 0 else 0, 1)
+
+    # Rating distributions
+    overall_dist = {1: 0, 2: 0, 3: 0, 4: 0, 5: 0}
+    coach_rating_dist = {1: 0, 2: 0, 3: 0, 4: 0, 5: 0}
+    effectiveness_scores = []
+    overall_sum = 0
+    coach_sum = 0
+    most_valuable_list = []
+    suggestions_list = []
+
+    for fb in all_feedback:
+        r = fb.get("overall_rating", 0)
+        if r in overall_dist:
+            overall_dist[r] += 1
+        overall_sum += r
+
+        cr = fb.get("coach_rating", 0)
+        if cr in coach_rating_dist:
+            coach_rating_dist[cr] += 1
+        coach_sum += cr
+
+        lo = fb.get("learning_outcomes", {})
+        if lo:
+            avg_eff = sum(lo.values()) / len(lo) if lo else 0
+            effectiveness_scores.append(round(avg_eff))
+
+        mv = fb.get("most_valuable", "")
+        if mv and len(mv) > 5:
+            coachee = await db.users.find_one({"id": fb.get("coachee_id")}, {"_id": 0, "name": 1})
+            most_valuable_list.append({"text": mv, "name": coachee["name"] if coachee else "Anonymous"})
+
+        sg = fb.get("suggestions", "")
+        if sg and len(sg) > 5:
+            coachee = await db.users.find_one({"id": fb.get("coachee_id")}, {"_id": 0, "name": 1})
+            suggestions_list.append({"text": sg, "name": coachee["name"] if coachee else "Anonymous"})
+
+    effectiveness_dist = {1: 0, 2: 0, 3: 0, 4: 0, 5: 0}
+    for s in effectiveness_scores:
+        if s in effectiveness_dist:
+            effectiveness_dist[s] += 1
+
+    avg_overall = round(overall_sum / fb_count, 1) if fb_count else 0
+    avg_coach = round(coach_sum / fb_count, 1) if fb_count else 0
+    avg_effectiveness = round(sum(effectiveness_scores) / len(effectiveness_scores), 1) if effectiveness_scores else 0
+
+    feedback_data = {
+        "total_sent": total_completed,
+        "total_responses": fb_count,
+        "response_rate": fb_response_rate,
+        "overall_experience": {
+            "distribution": [{"rating": k, "count": v} for k, v in overall_dist.items()],
+            "average": avg_overall,
+        },
+        "coach_knowledge": {
+            "distribution": [{"rating": k, "count": v} for k, v in coach_rating_dist.items()],
+            "average": avg_coach,
+        },
+        "learning_effectiveness": {
+            "distribution": [{"rating": k, "count": v} for k, v in effectiveness_dist.items()],
+            "average": avg_effectiveness,
+        },
+        "most_valuable": most_valuable_list,
+        "suggestions": suggestions_list,
+    }
+
     return {
         "coach_details": coach_details,
         "coachee_details": coachee_details,
+        "feedback": feedback_data,
         "charts": {
             "coaching_status": chart_coaching_status,
             "coaches_by_region": chart_coaches_by_region,
@@ -361,5 +460,8 @@ async def get_mis_report(user: dict = Depends(get_current_user)):
             "nomination_split": chart_nomination,
             "sessions_bucket": chart_sessions_bucket,
             "employee_status": chart_employee_status,
+            "coach_occupancy_bu": chart_coach_occupancy_bu,
+            "coaches_by_designation": chart_coaches_by_designation,
+            "coachees_by_designation": chart_coachees_by_designation,
         },
     }
