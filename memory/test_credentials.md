@@ -1,42 +1,41 @@
 # ELEVATE Platform - Test Credentials
 
 ## All accounts use password: `password123`
-## All emails use @in.gt.com domain
+## All emails use @in.gt.com or @walkerchandiok.in domain
 
 ### Quick Demo Login (buttons on login page)
-| Role    | Name           | Email                      |
-|---------|----------------|----------------------------|
-| Coach   | Fatema Hunaid  | Fatema.Hunaid@in.gt.com    |
-| Coachee | Prerna Kapoor  | Prerna.Kapoor@in.gt.com    |
-| Admin   | Raeesa Naim    | Raeesa.Naim@in.gt.com     |
+| Role    | Name           | Email                            |
+|---------|----------------|----------------------------------|
+| Admin   | Raeesa Naim    | Raeesa.Naim@in.gt.com           |
 
-### All Coaches (10)
-| Name              | Email                       | Location | Region | BU                          |
-|-------------------|-----------------------------|----------|--------|-----------------------------|
-| Fatema Hunaid     | Fatema.Hunaid@in.gt.com     | GUR      | North  | People & Culture            |
-| Triven Gupta      | Triven.Gupta@in.gt.com      | GUR      | North  | Global Delivery             |
-| Archie Mehtani    | Archie.Mehtani@in.gt.com    | DEL      | North  | FS Consulting               |
-| Anup Thomas       | Anup.Thomas@in.gt.com       | BAN      | South  | ESG & Risk Consulting       |
-| Sumaiya Shaikh    | Sumaiya.Shaikh@in.gt.com    | MUM      | West   | Audit                       |
-| Amit Kumar        | Amit.K@in.gt.com            | HYD      | South  | Tax, Regulatory & Finance   |
-| Kapil Arora       | Kapil.Arora@in.gt.com       | BAN      | South  | ESG & Risk Consulting       |
-| Gaurav Sahdev     | Gaurav.Sahdev@in.gt.com     | HYD      | South  | Private Client Services     |
-| Pankaj Arora      | Pankaj.Arora@in.gt.com      | CHN      | South  | Tax, Regulatory & Finance   |
-| Armaity Jayakar   | Armaity.Jayakar@in.gt.com   | MUM      | West   | Audit                       |
+### Demo Coach Picker (10 shown on login page)
+| Name              | Email                                |
+|-------------------|--------------------------------------|
+| Fatema Hunaid     | Fatema.Hunaid@in.gt.com              |
+| Triven Gupta      | Triven.Gupta@IN.GT.COM               |
+| Anup Thomas       | Anup.Thomas@in.gt.com                |
+| Amit Kumar        | Amit.K@walkerchandiok.in             |
+| Priyanka Gulati   | Priyanka.Gulati@in.gt.com            |
+| Armaity Jayakar   | Armaity.Jayakar@walkerchandiok.in    |
+| Hazel Ferreira    | Hazel.Ferreira@in.gt.com             |
+| Dhaval Sheth      | Dhaval.Sheth@in.gt.com               |
+| Krishan Arora     | Krishan.Arora@in.gt.com              |
+| Vignesh Kannan    | Vig.Kannan@in.gt.com                 |
 
-### All Coachees (10)
-| Name              | Email                       | Tier | Location | BU                          |
-|-------------------|-----------------------------|------|----------|-----------------------------|
-| Prerna Kapoor     | Prerna.Kapoor@in.gt.com     | T2   | DEL      | Tax, Regulatory & Finance   |
-| Rahul Lalit       | Rahul.Lalit@in.gt.com       | T2   | MUM      | Assurance                   |
-| Pragya Sharma     | Pragya.Sharma@in.gt.com     | T1   | BAN      | ESG & Risk Consulting       |
-| Mohit Khullar     | Mohit.Khullar@in.gt.com     | T1   | GUR      | Business Consulting         |
-| Pooja Raina       | Pooja.Raina@in.gt.com       | T2   | GUR      | Global Delivery             |
-| Pratik Hegde      | Pratik.Hegde@in.gt.com      | T2   | BAN      | Transformation Consulting   |
-| Saurabh Redhu     | Saurabh.Redhu@in.gt.com     | T2   | DEL      | FS Consulting               |
-| Kamalika Sen Roy  | Kamalika.Roy@in.gt.com      | T2   | MUM      | Audit & Assurance           |
-| Hazel Ferreira    | Hazel.Ferreira@in.gt.com    | T2   | MUM      | Cyber & IT Risk             |
-| Dhaval Sheth      | Dhaval.Sheth@in.gt.com      | T1   | DEH      | BPS - DEH                   |
+### Demo Coachee Picker (10 shown on login page)
+| Name              | Email                                |
+|-------------------|--------------------------------------|
+| Aion Bhattacharya | aion.bhattacharya@in.gt.com          |
+| Pranjal Saxena    | Pranjal.Saxena@IN.GT.COM             |
+| Shivani Shanker   | Shivani.Shanker@IN.GT.COM            |
+| Pratik Hegde      | Pratik.Hegde@IN.GT.COM               |
+| Pooja Raina       | Pooja.Raina@IN.GT.COM                |
+| Anirudh Rustagi   | Anirudh.Rustagi@IN.GT.COM            |
+| Sowmya Devi T     | Sowmya.T@IN.GT.COM                   |
+| Vivek Gautam      | Vivek.Gautam@IN.GT.COM               |
+| Mohit Rajput      | Mohit.Rajput@in.gt.com               |
+| Kamalika Sen Roy  | Kamalika.Roy@in.gt.com               |
 
-## Platform Email
-- Elevate@in.gt.com (sender for all demo emails)
+## Total Users: 270 (33 coaches + 236 coachees + 1 admin)
+## Data Source: Real GT employee data from Excel
+## Platform Email: Elevate@in.gt.com

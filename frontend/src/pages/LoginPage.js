@@ -21,29 +21,29 @@ export default function LoginPage() {
   const [demoPicker, setDemoPicker] = useState(null); // 'coach' | 'coachee' | null
 
   const demoCoaches = [
-    { name: 'Fatema Hunaid', email: 'Fatema.Hunaid@in.gt.com', location: 'GUR · People & Culture' },
-    { name: 'Triven Gupta', email: 'Triven.Gupta@in.gt.com', location: 'GUR · Global Delivery' },
-    { name: 'Archie Mehtani', email: 'Archie.Mehtani@in.gt.com', location: 'DEL · FS Consulting' },
+    { name: 'Fatema Hunaid', email: 'Fatema.Hunaid@in.gt.com', location: 'BAN · Tax & Regulatory' },
+    { name: 'Triven Gupta', email: 'Triven.Gupta@IN.GT.COM', location: 'GUR · Global Delivery' },
     { name: 'Anup Thomas', email: 'Anup.Thomas@in.gt.com', location: 'BAN · ESG & Risk' },
-    { name: 'Sumaiya Shaikh', email: 'Sumaiya.Shaikh@in.gt.com', location: 'MUM · Audit' },
-    { name: 'Amit Kumar', email: 'Amit.K@in.gt.com', location: 'HYD · Tax & Regulatory' },
-    { name: 'Kapil Arora', email: 'Kapil.Arora@in.gt.com', location: 'BAN · ESG & Risk' },
-    { name: 'Gaurav Sahdev', email: 'Gaurav.Sahdev@in.gt.com', location: 'HYD · Private Client' },
-    { name: 'Pankaj Arora', email: 'Pankaj.Arora@in.gt.com', location: 'CHN · Tax & Regulatory' },
-    { name: 'Armaity Jayakar', email: 'Armaity.Jayakar@in.gt.com', location: 'MUM · Audit' },
+    { name: 'Amit Kumar', email: 'Amit.K@walkerchandiok.in', location: 'HYD · Tax & Regulatory' },
+    { name: 'Priyanka Gulati', email: 'Priyanka.Gulati@in.gt.com', location: 'DEL · Transformation' },
+    { name: 'Armaity Jayakar', email: 'Armaity.Jayakar@walkerchandiok.in', location: 'MUM · Audit' },
+    { name: 'Hazel Ferreira', email: 'Hazel.Ferreira@in.gt.com', location: 'MUM · Operations' },
+    { name: 'Dhaval Sheth', email: 'Dhaval.Sheth@in.gt.com', location: 'AHM · Transformation' },
+    { name: 'Krishan Arora', email: 'Krishan.Arora@in.gt.com', location: 'DEL · Tax & Regulatory' },
+    { name: 'Vignesh Kannan', email: 'Vig.Kannan@in.gt.com', location: 'BAN · Transformation' },
   ];
 
   const demoCoachees = [
-    { name: 'Prerna Kapoor', email: 'Prerna.Kapoor@in.gt.com', detail: 'T2 · DEL · Tax & Regulatory' },
-    { name: 'Rahul Lalit', email: 'Rahul.Lalit@in.gt.com', detail: 'T2 · MUM · Assurance' },
-    { name: 'Pragya Sharma', email: 'Pragya.Sharma@in.gt.com', detail: 'T1 · BAN · ESG & Risk' },
-    { name: 'Mohit Khullar', email: 'Mohit.Khullar@in.gt.com', detail: 'T1 · GUR · Advisory' },
-    { name: 'Pooja Raina', email: 'Pooja.Raina@in.gt.com', detail: 'T2 · GUR · Global Delivery' },
-    { name: 'Pratik Hegde', email: 'Pratik.Hegde@in.gt.com', detail: 'T2 · BAN · Transformation' },
-    { name: 'Saurabh Redhu', email: 'Saurabh.Redhu@in.gt.com', detail: 'T2 · DEL · FS Consulting' },
-    { name: 'Kamalika Sen Roy', email: 'Kamalika.Roy@in.gt.com', detail: 'T2 · MUM · Audit' },
-    { name: 'Hazel Ferreira', email: 'Hazel.Ferreira@in.gt.com', detail: 'T2 · MUM · Cyber & IT Risk' },
-    { name: 'Dhaval Sheth', email: 'Dhaval.Sheth@in.gt.com', detail: 'T1 · DEH · BPS' },
+    { name: 'Aion Bhattacharya', email: 'aion.bhattacharya@in.gt.com', detail: 'T2 · KOL · ESG & Risk' },
+    { name: 'Pranjal Saxena', email: 'Pranjal.Saxena@IN.GT.COM', detail: 'T2 · NDA · ESG & Risk' },
+    { name: 'Shivani Shanker', email: 'Shivani.Shanker@IN.GT.COM', detail: 'T2 · GUR · Global Delivery' },
+    { name: 'Pratik Hegde', email: 'Pratik.Hegde@IN.GT.COM', detail: 'T2 · MUM · Transformation' },
+    { name: 'Pooja Raina', email: 'Pooja.Raina@IN.GT.COM', detail: 'T2 · GUR · Operations' },
+    { name: 'Anirudh Rustagi', email: 'Anirudh.Rustagi@IN.GT.COM', detail: 'T1 · GUR · Tax & Regulatory' },
+    { name: 'Sowmya Devi T', email: 'Sowmya.T@IN.GT.COM', detail: 'T2 · BAN · Tax & Regulatory' },
+    { name: 'Vivek Gautam', email: 'Vivek.Gautam@IN.GT.COM', detail: 'T2 · NDA · Transformation' },
+    { name: 'Mohit Rajput', email: 'Mohit.Rajput@in.gt.com', detail: 'T2 · GUR · Operations' },
+    { name: 'Kamalika Sen Roy', email: 'Kamalika.Roy@in.gt.com', detail: 'T2 · MUM · Operations' },
   ];
 
   const handleDemoLogin = async (email) => {
