@@ -1,6 +1,9 @@
 from fastapi import APIRouter, HTTPException, Depends
 from database import db
 from routes.auth import get_current_user
+from pydantic import BaseModel
+from typing import List, Optional
+from security import sanitize_string
 
 router = APIRouter(prefix="/admin", tags=["admin"])
 
@@ -8,6 +11,27 @@ router = APIRouter(prefix="/admin", tags=["admin"])
 def require_admin(user: dict):
     if user["role"] != "admin":
         raise HTTPException(status_code=403, detail="Admin access required")
+
+
+class CoachExpertiseUpdate(BaseModel):
+    expertise: List[str]
+    domains: Optional[List[str]] = None
+
+
+@router.put("/coaches/{coach_id}/expertise")
+async def update_coach_expertise(coach_id: str, body: CoachExpertiseUpdate, user: dict = Depends(get_current_user)):
+    require_admin(user)
+    coach = await db.users.find_one({"id": coach_id, "role": "coach"})
+    if not coach:
+        raise HTTPException(status_code=404, detail="Coach not found")
+
+    updates = {"expertise": [sanitize_string(e, 100) for e in body.expertise]}
+    if body.domains is not None:
+        updates["domains"] = [sanitize_string(d, 100) for d in body.domains]
+
+    await db.users.update_one({"id": coach_id}, {"$set": updates})
+    updated = await db.users.find_one({"id": coach_id}, {"_id": 0, "password_hash": 0})
+    return updated
 
 
 @router.get("/stats")

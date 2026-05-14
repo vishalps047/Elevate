@@ -12,7 +12,7 @@ import AdminRegistrations from '../components/AdminRegistrations';
 import AdminMIS from '../components/AdminMIS';
 import {
   Users, Calendar, TrendingUp, Award, Clock, CheckCircle,
-  ChevronRight, Star, Pause, Eye,
+  ChevronRight, Star, Pause, Eye, Pencil, Plus, X,
   UserPlus, FileSpreadsheet
 } from 'lucide-react';
 import { toast } from 'sonner';
@@ -65,6 +65,7 @@ export default function AdminDashboard() {
   const [activeTab, setActiveTab] = useState('registrations');
   const [userModal, setUserModal] = useState({ open: false, data: null, loading: false });
   const [regFilter, setRegFilter] = useState('pending');
+  const [editExpertise, setEditExpertise] = useState({ open: false, coachId: null, coachName: '', expertise: [], newItem: '' });
 
   const loadData = useCallback(async () => {
     try {
@@ -181,24 +182,24 @@ export default function AdminDashboard() {
             {coaches.map(coach => (
               <div
                 key={coach.id}
-                className="flex items-center gap-4 p-4 bg-card rounded-xl border border-border shadow-card cursor-pointer hover:bg-muted/30 transition-fast"
-                onClick={() => openUserHistory(coach.id)}
+                className="flex items-center gap-4 p-4 bg-card rounded-xl border border-border shadow-card hover:bg-muted/30 transition-fast"
                 data-testid={`coach-row-${coach.id}`}
               >
-                <Avatar className="w-11 h-11">
+                <Avatar className="w-11 h-11 cursor-pointer" onClick={() => openUserHistory(coach.id)}>
                   <AvatarImage src={coach.avatar} />
                   <AvatarFallback className="bg-primary/10 text-primary">{coach.name?.[0]}</AvatarFallback>
                 </Avatar>
-                <div className="flex-1 min-w-0">
+                <div className="flex-1 min-w-0 cursor-pointer" onClick={() => openUserHistory(coach.id)}>
                   <p className="text-sm font-semibold text-foreground truncate">{coach.name}</p>
                   <p className="text-xs text-muted-foreground">{coach.title}</p>
                   <div className="flex flex-wrap gap-1 mt-1">
                     {(coach.expertise || []).slice(0, 3).map(e => (
                       <span key={e} className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full">{e}</span>
                     ))}
+                    {(coach.expertise || []).length > 3 && <span className="text-xs text-muted-foreground">+{coach.expertise.length - 3}</span>}
                   </div>
                 </div>
-                <div className="flex items-center gap-6 text-center flex-shrink-0">
+                <div className="flex items-center gap-4 text-center flex-shrink-0">
                   <div>
                     <p className="text-sm font-bold text-foreground">{coach.session_count}</p>
                     <p className="text-xs text-muted-foreground">Sessions</p>
@@ -220,12 +221,96 @@ export default function AdminDashboard() {
                       <p className="text-xs text-muted-foreground">No rating</p>
                     )}
                   </div>
-                  <Eye className="w-4 h-4 text-muted-foreground" />
+                  <Button
+                    variant="outline" size="sm" className="h-8 text-xs gap-1"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setEditExpertise({ open: true, coachId: coach.id, coachName: coach.name, expertise: [...(coach.expertise || [])], newItem: '' });
+                    }}
+                    data-testid={`edit-expertise-${coach.id}`}
+                  >
+                    <Pencil className="w-3 h-3" /> Expertise
+                  </Button>
+                  <Eye className="w-4 h-4 text-muted-foreground cursor-pointer" onClick={() => openUserHistory(coach.id)} />
                 </div>
               </div>
             ))}
           </div>
         )}
+
+        {/* Edit Expertise Dialog */}
+        <Dialog open={editExpertise.open} onOpenChange={(v) => { if (!v) setEditExpertise(prev => ({ ...prev, open: false })); }}>
+          <DialogContent className="sm:max-w-md" data-testid="edit-expertise-dialog">
+            <DialogHeader>
+              <DialogTitle className="font-heading">Edit Area of Work — {editExpertise.coachName}</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-3">
+              <div className="flex flex-wrap gap-1.5">
+                {editExpertise.expertise.map((exp, i) => (
+                  <Badge key={`${exp}-${i}`} variant="secondary" className="gap-1 pl-2.5 pr-1 py-1 text-xs">
+                    {exp}
+                    <button
+                      onClick={() => setEditExpertise(prev => ({ ...prev, expertise: prev.expertise.filter((_, idx) => idx !== i) }))}
+                      className="hover:text-destructive ml-0.5"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  </Badge>
+                ))}
+                {editExpertise.expertise.length === 0 && <p className="text-xs text-muted-foreground">No expertise areas set</p>}
+              </div>
+              <div className="flex gap-2">
+                <input
+                  value={editExpertise.newItem}
+                  onChange={(e) => setEditExpertise(prev => ({ ...prev, newItem: e.target.value }))}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && editExpertise.newItem.trim()) {
+                      e.preventDefault();
+                      const val = editExpertise.newItem.trim();
+                      if (!editExpertise.expertise.includes(val)) {
+                        setEditExpertise(prev => ({ ...prev, expertise: [...prev.expertise, val], newItem: '' }));
+                      }
+                    }
+                  }}
+                  placeholder="Add expertise area..."
+                  className="flex-1 px-3 py-2 rounded-lg border border-border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                  data-testid="expertise-input"
+                />
+                <Button
+                  size="sm" variant="outline"
+                  disabled={!editExpertise.newItem.trim()}
+                  onClick={() => {
+                    const val = editExpertise.newItem.trim();
+                    if (val && !editExpertise.expertise.includes(val)) {
+                      setEditExpertise(prev => ({ ...prev, expertise: [...prev.expertise, val], newItem: '' }));
+                    }
+                  }}
+                >
+                  <Plus className="w-4 h-4" />
+                </Button>
+              </div>
+              <div className="flex justify-end gap-2 pt-2 border-t border-border">
+                <Button variant="outline" onClick={() => setEditExpertise(prev => ({ ...prev, open: false }))}>Cancel</Button>
+                <Button
+                  className="bg-primary text-white"
+                  data-testid="save-expertise-btn"
+                  onClick={async () => {
+                    try {
+                      await api.updateCoachExpertise(editExpertise.coachId, { expertise: editExpertise.expertise });
+                      setCoaches(prev => prev.map(c => c.id === editExpertise.coachId ? { ...c, expertise: editExpertise.expertise } : c));
+                      toast.success('Expertise updated');
+                      setEditExpertise(prev => ({ ...prev, open: false }));
+                    } catch (err) {
+                      toast.error(err.message || 'Failed to update');
+                    }
+                  }}
+                >
+                  Save Changes
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
 
         {/* Coachees Tab */}
         {activeTab === 'coachees' && (

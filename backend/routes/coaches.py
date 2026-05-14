@@ -6,6 +6,19 @@ from routes.auth import get_current_user
 router = APIRouter(prefix="/coaches", tags=["coaches"])
 
 
+@router.get("/expertise-options")
+async def get_expertise_options():
+    """Returns all unique expertise values across all coaches — dynamically built."""
+    pipeline = [
+        {"$match": {"role": "coach"}},
+        {"$unwind": "$expertise"},
+        {"$group": {"_id": "$expertise"}},
+        {"$sort": {"_id": 1}},
+    ]
+    results = await db.users.aggregate(pipeline).to_list(200)
+    return [r["_id"] for r in results if r["_id"]]
+
+
 @router.get("")
 async def list_coaches(user: dict = Depends(get_current_user)):
     coaches = await db.users.find(

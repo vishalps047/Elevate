@@ -10,19 +10,14 @@ import { Input } from '../components/ui/input';
 import { Search, SlidersHorizontal, X, CheckCircle, ArrowLeft } from 'lucide-react';
 import { toast } from 'sonner';
 
-const expertiseOptions = [
-  'Executive Presence', 'Leadership Development', 'Change Management', 'Risk Assessment',
-  'Stakeholder Engagement', 'Process Improvement', 'Project Planning', 'Performance Metrics',
-  'Team Communication', 'Feedback Mechanisms', 'Public Speaking',
-];
-
 export default function CoachesPage() {
   const navigate = useNavigate();
   const [step, setStep] = useState(1);
   const [selectedPreferences, setSelectedPreferences] = useState([]);
   const [goals, setGoals] = useState({ mainGoals: '', challenges: '', previousExp: '', notes: '', mentorshipArea: '' });
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedExpertise, setSelectedExpertise] = useState(expertiseOptions);
+  const [expertiseOptions, setExpertiseOptions] = useState([]);
+  const [selectedExpertise, setSelectedExpertise] = useState([]);
   const [sortBy, setSortBy] = useState('slots');
   const [coaches, setCoaches] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -30,7 +25,14 @@ export default function CoachesPage() {
   const [sending, setSending] = useState(false);
 
   useEffect(() => {
-    api.getCoaches().then(c => { setCoaches(c); setLoading(false); }).catch(() => setLoading(false));
+    Promise.all([api.getCoaches(), api.getExpertiseOptions()])
+      .then(([c, opts]) => {
+        setCoaches(c);
+        setExpertiseOptions(opts);
+        setSelectedExpertise(opts);
+        setLoading(false);
+      })
+      .catch(() => setLoading(false));
   }, []);
 
   const togglePreference = useCallback((coach) => {
@@ -165,14 +167,14 @@ export default function CoachesPage() {
 
             <div className="flex gap-6">
               <div className="w-52 flex-shrink-0 hidden md:block">
-                <CoachFilters selectedExpertise={selectedExpertise} onExpertiseChange={setSelectedExpertise} />
+                <CoachFilters expertiseOptions={expertiseOptions} selectedExpertise={selectedExpertise} onExpertiseChange={setSelectedExpertise} />
               </div>
               <div className="flex-1">
                 {filteredCoaches.length === 0 ? (
                   <div className="text-center py-16 bg-card rounded-xl border border-border">
                     <Search className="w-12 h-12 text-muted-foreground mx-auto mb-3 opacity-40" />
                     <p className="text-foreground font-medium">No coaches found</p>
-                    <Button variant="outline" className="mt-4" onClick={() => { setSearchQuery(''); setSelectedExpertise(expertiseOptions); }}>Clear Filters</Button>
+                    <Button variant="outline" className="mt-4" onClick={() => { setSearchQuery(''); setSelectedExpertise([...expertiseOptions]); }}>Clear Filters</Button>
                   </div>
                 ) : (
                   <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">

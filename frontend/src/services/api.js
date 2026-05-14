@@ -52,6 +52,8 @@ class ApiService {
 
   // Coaches
   getCoaches() { return this.request('/api/coaches'); }
+  getExpertiseOptions() { return this.request('/api/coaches/expertise-options'); }
+  updateCoachExpertise(coachId, data) { return this.request(`/api/admin/coaches/${coachId}/expertise`, { method: 'PUT', body: JSON.stringify(data) }); }
   getAvailability(coachId) { return this.request(`/api/coaches/${coachId}/availability`); }
   getRawAvailability(coachId) { return this.request(`/api/coaches/${coachId}/availability/raw`); }
   setAvailability(data) { return this.request('/api/coaches/availability', { method: 'POST', body: JSON.stringify(data) }); }
